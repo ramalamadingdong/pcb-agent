@@ -27,8 +27,12 @@ USER root
 
 # curl + ca-certificates to fetch the pinned artifacts; make so `./run.sh
 # make check` works the same inside and outside.
+# xvfb: a virtual framebuffer, not a GUI — nothing renders anywhere a
+# human could see. It exists solely because Freerouting 1.9.0 calls
+# Toolkit.getScreenSize() even in -de/-do batch mode; under xvfb-run it
+# routes to completion (verified on a real 4-layer DSN: 177 wires).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl make \
+    && apt-get install -y --no-install-recommends ca-certificates curl make xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 # --- JRE: Eclipse Temurin 25, pinned tarball + sha256 (x64 — the base image
@@ -45,17 +49,20 @@ RUN curl -fsSL -o /tmp/jre.tgz "$TEMURIN_URL" \
 ENV JAVA_HOME=/opt/java
 ENV PATH=/opt/java/bin:$PATH
 
-# --- Freerouting: pinned release jar, checksum-verified. 2.3.0, and the
-# --- choice is forced: 1.9.0 wins a routing-quality A/B on a real 4-layer
-# --- board (24 vs 28 unconnected, deterministic self-stop) but CANNOT run
-# --- headless — its main() calls Toolkit.getScreenSize() even in -de/-do
-# --- batch mode and throws HeadlessException with no display (measured in
-# --- this container). No X11 goes in this image, so 2.3.0 it is. Native
-# --- runs with a display can still prefer 1.9.0 via FREEROUTING_JAR —
-# --- remembering 1.9.0's DSN parser hangs on `via_keepout` sections
-# --- (export keepouts plain for it), while 2.3.0 parses the full style.
-ARG FREEROUTING_VERSION=2.3.0
-ARG FREEROUTING_SHA256=3cf18d608437740bc497db6b8ef5888e2e60a08de0def20691d1bad0c0e0ee24
+# --- Freerouting: pinned release jar, checksum-verified. 1.9.0 — the
+# --- routing-quality winner on a measured A/B (24 vs 28 unconnected on a
+# --- real 4-layer board, deterministic self-stop) — now that xvfb covers
+# --- its one defect: main() calls Toolkit.getScreenSize() even in -de/-do
+# --- batch mode (HeadlessException without a display; completes under
+# --- xvfb-run — both measured in this container). Container and native
+# --- hosts route with the same version again. Caveats that stay true:
+# --- 1.9.0's DSN parser hangs on `via_keepout` sections, so export
+# --- keepouts plain for it (DSN_KO_STYLE=plain); needs Java 17+, and the
+# --- Temurin 25 above also runs 2.3.0 if a board overrides the pin via
+# --- build args (2.3.0 sha256:
+# --- 3cf18d608437740bc497db6b8ef5888e2e60a08de0def20691d1bad0c0e0ee24).
+ARG FREEROUTING_VERSION=1.9.0
+ARG FREEROUTING_SHA256=9084a4888937a7f31f857ecc12aa7a37407f51160e4d2892dff9c9bb47ae3102
 RUN mkdir -p /opt/freerouting \
     && curl -fsSL -o "/opt/freerouting/freerouting-${FREEROUTING_VERSION}.jar" \
         "https://github.com/freerouting/freerouting/releases/download/v${FREEROUTING_VERSION}/freerouting-${FREEROUTING_VERSION}.jar" \
@@ -64,6 +71,16 @@ ENV FREEROUTING_JAR=/opt/freerouting/freerouting-${FREEROUTING_VERSION}.jar
 
 # --- uv, pinned. Copied from the official static image, no installer script.
 COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /usr/local/bin/
+
+# --- kicad-tools (rjwalters, MIT), pinned by commit. The build passes use
+# --- its schematic generator, PCB schema editor, and the kct CLI for
+# --- create-pcb / placement / zones. Installed into system site-packages
+# --- next to pcbnew so one python sees both.
+ARG KICAD_TOOLS_REF=8334e84bfa130c1db56b80496105f6573471960e
+RUN uv pip install --system --break-system-packages \
+        "kicad-tools @ git+https://github.com/rjwalters/kicad-tools@${KICAD_TOOLS_REF}" \
+    && python3 -c "import kicad_tools; print('kicad_tools ok')" \
+    && kct --version || true
 
 # --- Non-root. The base image already has kicad (1000:1000); remap it to the
 # --- caller's UID/GID so files written to the mounted volume are theirs.

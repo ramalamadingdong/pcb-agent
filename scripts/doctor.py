@@ -156,8 +156,8 @@ def check_kicad_cli(doc: Doc) -> None:
         fixes = {
             "Darwin": "brew install --cask kicad\n"
             "then add /Applications/KiCad/KiCad.app/Contents/MacOS to PATH",
-            "Linux": "sudo add-apt-repository ppa:kicad/kicad-9.0-releases\n"
-            "sudo apt install kicad",
+            "Linux": "sudo add-apt-repository ppa:kicad/kicad-10.0-releases\n"
+            "sudo apt install kicad   (match the major your boards use)",
             "Windows": "winget install KiCad.KiCad",
         }
         doc.add(BAD, "kicad-cli", "not on PATH", fixes.get(doc.os, "install KiCad 9"))
@@ -238,6 +238,62 @@ def check_pcbnew(doc: Doc) -> None:
         + "\nThis is the #1 setup failure: pcbnew only imports from KiCad's\n"
         "own interpreter, not from a venv or a brew/apt python.",
     )
+
+
+def check_board_format(doc: Doc) -> None:
+    """The drift that actually bites is the board FORMAT, not the CLI major.
+
+    A KiCad 9 pcbnew loading a (version 20260206) board written by KiCad 10
+    returns None — no exception, no error. Comparing kicad-cli versions
+    would miss a same-major format bump, so when a board exists, actually
+    try to load it with whatever pcbnew will process it.
+    """
+    boards = sorted(Path(".").glob("*.kicad_pcb")) + sorted(
+        Path(".").glob("examples/*/*.kicad_pcb")
+    )
+    if not boards:
+        return  # nothing to check yet — no row, no noise
+    board = boards[0]
+    m = re.search(r"\(version\s+(\d+)\)", board.read_text(errors="replace")[:2000])
+    ver = m.group(1) if m else "?"
+
+    loader = (
+        "import pcbnew,shutil; shutil.copy('{src}', '/tmp/_fmt.kicad_pcb'); "
+        "b = pcbnew.LoadBoard('/tmp/_fmt.kicad_pcb'); "
+        "print('LOADED' if b else 'NONE')"
+    )
+    if IN_CONTAINER:
+        rc, out = sh([sys.executable, "-c", loader.format(src=board)], timeout=60)
+    elif doc.container and shutil.which("docker"):
+        rc, out = sh(
+            [
+                "docker", "run", "--rm",
+                "-v", f"{board.resolve().parent}:/fmt:ro",
+                "-e", "HOME=/tmp",
+                IMAGE, "python3", "-c", loader.format(src=f"/fmt/{board.name}"),
+            ],
+            timeout=90,
+        )
+    else:
+        doc.add(
+            WARN,
+            "board-format",
+            f"{board.name} is format {ver} — no container/pcbnew here to test-load it",
+        )
+        return
+    if rc == 0 and "LOADED" in out:
+        doc.add(OK, "board-format", f"{board.name} (format {ver}) loads in pcbnew")
+    elif "NONE" in out:
+        doc.add(
+            BAD,
+            "board-format",
+            f"pcbnew returns None loading {board.name} (format {ver})",
+            "The board was written by a newer KiCad than the one trying to\n"
+            "read it. Rebuild the container against the KiCad that wrote it\n"
+            "(KICAD_BASE in the Makefile), or re-export from an older KiCad.",
+        )
+    else:
+        doc.add(WARN, "board-format", f"load test failed to run: {out[:60]}")
 
 
 def check_java(doc: Doc) -> None:
@@ -337,14 +393,31 @@ def check_git(doc: Doc) -> None:
 
 
 def check_skills(doc: Doc) -> None:
-    """kicad-happy installs as a Claude Code plugin, so look for its marker."""
+    """Best-effort: Claude Code's plugin layout varies by version/OS.
+
+    Observed installs (2026-08): a ~/.claude/kicad-happy/ directory plus the
+    individual skills under ~/.claude/skills/<name>/ — NOT under
+    ~/.claude/plugins, which held only a blocklist. Check all of them.
+    """
+    claude = Path.home() / ".claude"
     homes = [
-        Path.home() / ".claude" / "plugins",
+        claude / "plugins",
         Path.home() / ".config" / "claude" / "plugins",
     ]
     for h in homes:
         if h.exists() and any("kicad-happy" in p.name for p in h.rglob("*")):
             doc.add(OK, "kicad-happy", f"installed under {h}")
+            return
+    if (claude / "kicad-happy").exists():
+        doc.add(OK, "kicad-happy", f"installed at {claude / 'kicad-happy'}")
+        return
+    skills = claude / "skills"
+    known = {"kicad", "lcsc", "jlcpcb", "digikey", "mouser", "emc", "spice"}
+    if skills.exists():
+        present = known & {p.name for p in skills.iterdir() if p.is_dir()}
+        if len(present) >= 3:
+            doc.add(OK, "kicad-happy",
+                    f"{len(present)} of its skills under {skills}")
             return
     doc.add(
         WARN,
@@ -363,6 +436,7 @@ CHECKS = [
     check_git,
     check_kicad_cli,
     check_pcbnew,
+    check_board_format,
     check_java,
     check_freerouting,
     check_uv,

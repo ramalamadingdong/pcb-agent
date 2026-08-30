@@ -11,8 +11,8 @@ IMAGE ?= pcb-agent
 # only so a bare `docker build` works — bump both together. KICAD_BASE must
 # match the KiCad major you review boards with (see the Dockerfile header).
 KICAD_BASE := kicad/kicad:10.0@sha256:182c8005cb775a2c448a4c18681d489f1ff472a761885eba3e08b07e3c0564de
-export FREEROUTING_VERSION := 2.3.0
-export FREEROUTING_SHA256  := 3cf18d608437740bc497db6b8ef5888e2e60a08de0def20691d1bad0c0e0ee24
+export FREEROUTING_VERSION := 1.9.0
+export FREEROUTING_SHA256  := 9084a4888937a7f31f857ecc12aa7a37407f51160e4d2892dff9c9bb47ae3102
 
 ifeq ($(PCB_AGENT_CONTAINER),)
 HAVE_IMAGE := $(shell docker image inspect $(IMAGE) >/dev/null 2>&1 && echo yes)
