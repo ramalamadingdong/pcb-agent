@@ -407,6 +407,9 @@ class FabPackage:
     drill_files: list[Path] = field(default_factory=list)
     job: dict | None = None
     unknown: list[Path] = field(default_factory=list)
+    # None = not configured, True = outline matched, False = mismatch.
+    # Coordinate-based checks must not report PASS unless this is True.
+    frame_verified: bool | None = None
 
 
 def load_package(root: Path) -> FabPackage:
@@ -504,6 +507,58 @@ def check_package_sane(pkg: FabPackage, cfg: dict, rep: Report) -> None:
         )
 
 
+def check_frame(pkg: FabPackage, cfg: dict, rep: Report) -> None:
+    """Confirm the gerbers sit in the coordinate frame the config assumes.
+
+    Every rectangle in board.toml — keepouts, thermal via zones — is written in
+    absolute board coordinates. If the export lands the board somewhere else,
+    those rectangles point at empty space, find no copper, and report PASS. A
+    keepout that passes because the checker looked in the wrong place is worse
+    than no keepout check at all, so nothing coordinate-based is allowed to
+    pass until the frame is confirmed.
+    """
+    frame = cfg.get("frame", {})
+    expected = frame.get("outline_bbox")
+    if not expected:
+        pkg.frame_verified = None
+        rep.skip(
+            "frame/origin",
+            "no [frame] outline_bbox — coordinate checks can't be trusted",
+        )
+        return
+    if pkg.outline is None:
+        pkg.frame_verified = False
+        rep.bad("frame/origin", "no Edge_Cuts to check the frame against")
+        return
+    bb = pkg.outline.bbox()
+    if bb is None:
+        pkg.frame_verified = False
+        rep.bad("frame/origin", "Edge_Cuts is empty")
+        return
+    tol = float(frame.get("tolerance_mm", 0.5))
+    exp = [float(v) for v in expected]
+    delta = [abs(a - b) for a, b in zip(bb, exp)]
+    if max(delta) <= tol:
+        pkg.frame_verified = True
+        rep.ok("frame/origin", f"outline matches within {max(delta):.3f}mm")
+    else:
+        pkg.frame_verified = False
+        rep.bad(
+            "frame/origin",
+            f"outline is ({bb[0]:.2f},{bb[1]:.2f})-({bb[2]:.2f},{bb[3]:.2f}), "
+            f"config assumes ({exp[0]:.2f},{exp[1]:.2f})-({exp[2]:.2f},{exp[3]:.2f}). "
+            "Every keepout and via-zone rectangle is pointing at the wrong place.",
+        )
+
+
+def _frame_note(pkg: FabPackage) -> str | None:
+    if pkg.frame_verified is True:
+        return None
+    if pkg.frame_verified is False:
+        return "frame mismatch — this region is not where the config thinks"
+    return "frame unverified — set [frame] outline_bbox to trust this"
+
+
 def check_planes_clean(pkg: FabPackage, cfg: dict, rep: Report) -> None:
     planes = cfg.get("layers", {}).get("planes", [])
     if not planes:
@@ -538,8 +593,18 @@ def check_power_widths(pkg: FabPackage, cfg: dict, rep: Report) -> None:
     if not patterns or not min_w:
         rep.skip("power/width", "no power net rule in config")
         return
+    # Nets fed by an inner plane have legitimately thin SURFACE copper — a
+    # pad escape into a via is a few mm at pad width. plane_fed exempts
+    # those. The discriminator is the CONNECTED CHAIN of thin copper, not
+    # segment count: escapes are short isolated stubs, while a routed run —
+    # even one drawn as many short segments — links into one long chain.
+    # Chains up to stub_max_mm are exempt; longer chains are routed runs
+    # and still held to min_width_mm.
+    plane_fed = pw.get("plane_fed", [])
+    stub_max = float(pw.get("stub_max_mm", 3.0))
     seen: set[str] = set()
     thin: dict[str, float] = {}
+    fed_thin: dict[str, list[Draw]] = {}
     for lname, layer in pkg.copper.items():
         for d in layer.draws:
             if not net_matches(d.net, patterns) or d.width is None:
@@ -548,7 +613,42 @@ def check_power_widths(pkg: FabPackage, cfg: dict, rep: Report) -> None:
             seen.add(d.net)
             if d.width < min_w - 1e-6:
                 key = f"{d.net}@{lname}"
-                thin[key] = min(thin.get(key, 9e9), d.width)
+                if net_matches(d.net, plane_fed):
+                    fed_thin.setdefault(key, []).append(d)
+                else:
+                    thin[key] = min(thin.get(key, 9e9), d.width)
+
+    stub_note: dict[str, tuple[int, float]] = {}
+    for key, draws in fed_thin.items():
+        # union-find over shared endpoints (snapped to a 0.05 mm grid)
+        parent = list(range(len(draws)))
+
+        def find(i: int) -> int:
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        node: dict[tuple[int, int], int] = {}
+        for i, d in enumerate(draws):
+            for px, py in ((d.x1, d.y1), (d.x2, d.y2)):
+                k = (round(px / 0.05), round(py / 0.05))
+                if k in node:
+                    a, b = find(node[k]), find(i)
+                    parent[a] = b
+                else:
+                    node[k] = i
+        chains: dict[int, float] = {}
+        for i, d in enumerate(draws):
+            r = find(i)
+            chains[r] = chains.get(r, 0.0) + d.length
+        worst = max(chains.values())
+        if worst > stub_max:
+            thin[key] = min(d.width for d in draws)
+            thin[key + f" (chain {worst:.1f}mm)"] = thin.pop(key)
+        else:
+            stub_note[key] = (len(chains), sum(chains.values()))
+
     if not seen:
         rep.bad(
             "power/width",
@@ -559,7 +659,13 @@ def check_power_widths(pkg: FabPackage, cfg: dict, rep: Report) -> None:
         detail = ", ".join(f"{k} {v:.3f}mm" for k, v in sorted(thin.items())[:6])
         rep.bad("power/width", f"below {min_w}mm: {detail}")
     else:
-        rep.ok("power/width", f"{len(seen)} power nets all >= {min_w}mm")
+        note = ""
+        if stub_note:
+            n_chains = sum(c for c, _ in stub_note.values())
+            total = sum(t for _, t in stub_note.values())
+            note = (f"; {n_chains} plane-fed escape stub(s) exempted "
+                    f"({total:.1f}mm, all chains <= {stub_max}mm)")
+        rep.ok("power/width", f"{len(seen)} power nets all >= {min_w}mm{note}")
 
 
 def check_silk_inside(pkg: FabPackage, cfg: dict, rep: Report) -> None:
@@ -684,6 +790,10 @@ def check_keepouts(pkg: FabPackage, cfg: dict, rep: Report) -> None:
         if hits:
             detail = ", ".join(f"{k}:{v}" for k, v in hits.items())
             rep.bad(f"keepouts/{name}", f"copper found on {detail}")
+            continue
+        note = _frame_note(pkg)
+        if note:
+            rep.skip(f"keepouts/{name}", f"no copper found, but {note}")
         else:
             rep.ok(f"keepouts/{name}", f"clear on {len(layers)} layer(s)")
 
@@ -697,10 +807,14 @@ def check_thermal_vias(pkg: FabPackage, cfg: dict, rep: Report) -> None:
         name = z.get("name", "zone")
         want = int(z.get("min_count", 1))
         found = sum(1 for h in pkg.holes if h.plated and in_rect(h.x, h.y, z))
-        if found >= want:
-            rep.ok(f"thermal-vias/{name}", f"{found} (need {want})")
-        else:
+        if found < want:
             rep.bad(f"thermal-vias/{name}", f"only {found}, need {want}")
+            continue
+        note = _frame_note(pkg)
+        if note:
+            rep.skip(f"thermal-vias/{name}", f"{found} found, but {note}")
+        else:
+            rep.ok(f"thermal-vias/{name}", f"{found} (need {want})")
 
 
 def check_rf_budget(pkg: FabPackage, cfg: dict, rep: Report) -> None:
@@ -726,6 +840,7 @@ def check_rf_budget(pkg: FabPackage, cfg: dict, rep: Report) -> None:
 
 CHECKS = [
     check_package_sane,
+    check_frame,
     check_planes_clean,
     check_power_widths,
     check_silk_inside,
@@ -759,6 +874,29 @@ planes = ["In1_Cu", "In2_Cu"]
 # names, so power traces come out at default width and nothing errors.
 patterns = ["VBUS", "VSYS", "VBAT", "+3V3", "+5V", "GND", "VDD*", "VCC*"]
 min_width_mm = 0.30
+# Nets fed by an inner plane have legitimately thin surface stubs (a pad
+# escape into a via). Listing them here exempts CONNECTED CHAINS of thin
+# copper up to stub_max_mm; longer chains are routed runs — even chopped
+# into short segments they stay connected — and still fail min_width_mm.
+# plane_fed = ["GND", "+3V3"]
+# stub_max_mm = 3.0
+# Nets fed by an inner plane have legitimately thin surface stubs (a pad
+# escape into a via). List them here to exempt segments up to stub_max_mm;
+# longer runs are still held to min_width_mm, and more than
+# stub_total_max_mm of exempted copper on one net+layer fails anyway.
+# plane_fed = ["GND", "+3V3"]
+# stub_max_mm = 2.0
+# stub_total_max_mm = 10.0
+
+[frame]
+# Guards against the checker inspecting the wrong region. Every rectangle
+# below is in absolute board coordinates; if the export lands the board
+# somewhere else, they point at empty space and report PASS. Fill in the
+# Edge_Cuts bounding box you expect. Without this, keepout and via-zone
+# checks report SKIP rather than PASS — a check that looked in the wrong
+# place is not a check that passed.
+# outline_bbox = [0.0, 0.0, 68.58, 53.34]
+# tolerance_mm = 0.5
 
 [silkscreen]
 # Fab clips anything past the outline, so it just prints bare.
@@ -855,8 +993,16 @@ def main(argv: list[str] | None = None) -> int:
     name = cfg.get("board", {}).get("name", root.name)
     print(f"\n{name} — {root}\n")
     print(rep.render(color=color))
-    total = len(rep.results)
-    print(f"\n{total - rep.failed}/{total} checks passed, {rep.failed} failed\n")
+    passed = sum(1 for r in rep.results if r.status == PASS)
+    skipped = sum(1 for r in rep.results if r.status == SKIP)
+    parts = [f"{passed} passed"]
+    if skipped:
+        parts.append(f"{skipped} not checked")
+    parts.append(f"{rep.failed} failed")
+    print("\n" + ", ".join(parts) + "\n")
+    if skipped and not rep.failed:
+        print("Some checks did not run. A rule you never configured is not a\n"
+              "rule that passed — see the SKIP lines above.\n")
     return 1 if rep.failed else 0
 
 

@@ -7,6 +7,14 @@
 [board]
 name = "unoq-power-shield"
 
+[frame]
+# Ties the coordinate frame every rectangle below assumes to the shield's
+# actual export. The board is portrait: X across 53.34 mm, Y along
+# 68.58 mm, origin bottom-left (the UNO Q fab frame — rev-1-plan.md).
+# Without this the antenna keepout could "pass" by inspecting empty space.
+outline_bbox = [0.0, 0.0, 53.34, 68.58]
+tolerance_mm = 0.5
+
 [layers]
 # L2 = solid GND under the switcher, L3 = power plane. Any track on these
 # breaks the return path the buck's ripple current depends on.

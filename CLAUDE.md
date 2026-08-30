@@ -44,6 +44,11 @@ names, part rotation conventions. Nothing errors; the output is just wrong.
 a fact. Pull the datasheet, cite it, and copy it into `docs/datasheets/` so an
 upstream update can't quietly change your geometry later.
 
+**Confirm the document is the document.** A fetched PDF is not verified by
+its filename or its URL. One LCSC "datasheet" download turned out to be an
+ISO certificate. Open it, find the part number inside it, and check one
+number you already know before trusting the numbers you don't.
+
 **Where a datasheet's text and its land drawing disagree, the drawing wins.**
 It's what the factory builds.
 
