@@ -78,7 +78,7 @@ from pathlib import Path
 import pcbnew
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import count_segments, emit, fail, load_config, pass_parser  # noqa: E402
+from _lib import board_frame, count_segments, emit, fail, load_config, pass_parser, to_kicad_xy  # noqa: E402
 
 DEFAULT_COPPER = ["F_Cu", "In1_Cu", "In2_Cu", "B_Cu"]
 
@@ -218,12 +218,16 @@ def main() -> int:
     # not run — and honouring the same `allow_tracks` / `allow_vias` opt-outs,
     # so a keepout that only bans pours does not silently ban routing too.
     ids_by_layer_name = {layer_name(n): i for n, i in ids.items()}
+    ko_frame = board_frame(b)
     for ko in cfg.get("keepouts", []):
         try:
             x1, y1, x2, y2 = (float(ko["x1"]), float(ko["y1"]),
                               float(ko["x2"]), float(ko["y2"]))
         except (KeyError, TypeError, ValueError):
             fail(f"[[keepouts]] {ko.get('name', '?')}: needs x1,y1,x2,y2 in mm")
+        # config is board-frame (bottom-left, Y-up) — see _lib.board_frame
+        x1, y1 = to_kicad_xy(ko_frame, x1, y1)
+        x2, y2 = to_kicad_xy(ko_frame, x2, y2)
         names = ko.get("layers") or list(ids_by_layer_name)
         lys = {ids_by_layer_name[layer_name(n)] for n in names
                if layer_name(n) in ids_by_layer_name}

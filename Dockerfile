@@ -78,8 +78,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /usr/local/bin/
 # --- next to pcbnew so one python sees both.
 ARG KICAD_TOOLS_REF=8334e84bfa130c1db56b80496105f6573471960e
 RUN uv pip install --system --break-system-packages \
-        "kicad-tools @ git+https://github.com/rjwalters/kicad-tools@${KICAD_TOOLS_REF}" \
-    && python3 -c "import kicad_tools; print('kicad_tools ok')" \
+        "kicad-tools[placement] @ git+https://github.com/rjwalters/kicad-tools@${KICAD_TOOLS_REF}" \
+    && python3 -c "import kicad_tools, cmaes; print('kicad_tools + cmaes ok')" \
     && kct --version || true
 
 # --- Non-root. The base image already has kicad (1000:1000); remap it to the

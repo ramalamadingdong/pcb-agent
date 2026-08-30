@@ -184,8 +184,11 @@ def main() -> int:
     for p in plan:
         fp = by_ref[p["ref"]]
         # Footprint.position is board-relative; the page offset lives in
-        # fp._board_origin and is applied by the serialiser.
-        fp.position = (round(p["x"], 3), round(p["y"], 3))
+        # fp._board_origin and is applied by the serialiser. Config is
+        # board-frame (bottom-left, Y-UP) — see _lib.board_frame — while
+        # kicad_tools positions run Y-DOWN, so flip against the outline
+        # height on the way in.
+        fp.position = (round(p["x"], 3), round(h - p["y"], 3))
         fp.rotation = float(p["rotation"])
         fp.locked = bool(p["locked"])
 

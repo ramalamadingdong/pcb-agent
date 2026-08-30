@@ -197,11 +197,14 @@ def main() -> int:
     if bb.GetWidth() <= 0 or bb.GetHeight() <= 0:
         _lib.fail("no Edge.Cuts outline found -- cannot place silkscreen")
     ox, oy = bb.GetLeft(), bb.GetTop()
+    frame = _lib.board_frame(b)
 
     def abs_pt(x, y):
-        """board.toml coordinates are ABSOLUTE board mm — the same frame
-        [[keepouts]] and [frame] use, so nothing has to agree on an origin."""
-        return pcbnew.VECTOR2I(mm(x), mm(y))
+        """board.toml coordinates are board-frame (bottom-left, Y-UP) — the
+        same frame [[keepouts]] and [frame] use — converted to KiCad page
+        coordinates here (see _lib.board_frame)."""
+        kx, ky = _lib.to_kicad_xy(frame, x, y)
+        return pcbnew.VECTOR2I(mm(kx), mm(ky))
 
     # ------------------------------------------------------------------ 1 ----
     # MARKINGS first: their positions are FIXED, and the refdes search below
@@ -330,13 +333,16 @@ def main() -> int:
 
     # Declared keepouts are silk keepouts too: a module's PCB-antenna band
     # wants nothing printed over it either.  Same rectangles the gerber
-    # checker reads, absolute board mm.
+    # checker reads — board-frame (bottom-left, Y-up), converted here
+    # (see _lib.board_frame).
     keepout_rects = []
     for ko in cfg.get("keepouts", []) or []:
         if not all(k in ko for k in ("x1", "y1", "x2", "y2")):
             continue
-        x1, x2 = sorted((float(ko["x1"]), float(ko["x2"])))
-        y1, y2 = sorted((float(ko["y1"]), float(ko["y2"])))
+        kx1, ky1 = _lib.to_kicad_xy(frame, float(ko["x1"]), float(ko["y1"]))
+        kx2, ky2 = _lib.to_kicad_xy(frame, float(ko["x2"]), float(ko["y2"]))
+        x1, x2 = sorted((kx1, kx2))
+        y1, y2 = sorted((ky1, ky2))
         keepout_rects.append(
             (
                 mm(x1 - keepout_margin),

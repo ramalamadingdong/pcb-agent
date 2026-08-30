@@ -111,7 +111,24 @@ def main() -> int:
 
     pro = Path(args.board).with_suffix(".kicad_pro")
     if not pro.exists():
-        fail(f"{pro}: no project file beside the board — run create_pcb first")
+        # kct create-pcb writes only the board; bootstrap a minimal project
+        # file. It must exist: the .kicad_pro is where net classes live in
+        # KiCad 6+, and pcbnew (and therefore the freerouting DSN export)
+        # resolves widths from it when it sits beside the board.
+        pro.write_text(json.dumps({
+            "meta": {"filename": pro.name, "version": 3},
+            "net_settings": {
+                "classes": [{
+                    "name": "Default",
+                    "track_width": 0.25,
+                    "clearance": 0.15,
+                    "via_diameter": 0.6,
+                    "via_drill": 0.3,
+                }],
+                "meta": {"version": 4},
+            },
+        }, indent=2), encoding="utf-8")
+        print(f"  bootstrapped minimal {pro.name}", file=sys.stderr)
 
     nets = netlist_nets(Path(args.netlist))
 
@@ -138,11 +155,16 @@ def main() -> int:
     classes = ns.setdefault("classes", [])
     cls = next((c for c in classes if c.get("name") == class_name), None)
     if cls is None:
-        have = ", ".join(str(c.get("name")) for c in classes) or "(none)"
-        fail(
-            f"{pro}: no {class_name!r} netclass — create-pcb output changed? "
-            f"Classes present: {have}. Set [nets.power] class to one of them."
-        )
+        # kct create-pcb does not write netclasses at all — create the
+        # power class here rather than assuming an upstream tool did.
+        cls = {
+            "name": class_name,
+            "clearance": 0.15,
+            "via_diameter": 0.6,
+            "via_drill": 0.3,
+        }
+        classes.append(cls)
+        print(f"  created {class_name!r} netclass in {pro.name}", file=sys.stderr)
     old_width = cls.get("track_width")
     cls["track_width"] = float(width)
 

@@ -1,0 +1,280 @@
+(footprint "TI_SO-PowerPAD-8"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "8-Lead Plastic PSOP, Exposed Die Pad (TI DDA0008B, see http://www.ti.com/lit/ds/symlink/lm3404.pdf)")
+	(tags "SSOP 0.50 exposed pad")
+	(property "Reference" "REF**"
+		(at 0 -3.3 0)
+		(layer "F.SilkS")
+		(uuid "76dfc6c2-dfba-41cf-b88f-87c5ccaab587")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "TI_SO-PowerPAD-8"
+		(at 0 3.4 0)
+		(layer "F.Fab")
+		(uuid "4b0263c7-71f9-47e7-ba94-03b8e537a06b")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "533fa938-d50a-4260-91b6-4a55c8157fff")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "28160df4-76fa-4b39-9c76-594622ad081d")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(clearance 0.2)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -2.075 -2.575)
+		(end 2.075 -2.575)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "952a71c7-019c-40f7-bf87-f24eae523d67")
+	)
+	(fp_line
+		(start -2.075 2.575)
+		(end 2.075 2.575)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "6b05a05d-1e24-4f64-af17-b31d94eb6a2f")
+	)
+	(fp_poly
+		(pts
+			(xy -2.5 -2.5) (xy -2.74 -2.83) (xy -2.26 -2.83) (xy -2.5 -2.5)
+		)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(fill yes)
+		(layer "F.SilkS")
+		(uuid "e764276f-5831-4407-be23-fb8585d473c2")
+	)
+	(fp_line
+		(start -4 -2.7)
+		(end -4 2.7)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "468b4d46-891a-4ac2-be39-645979c5658a")
+	)
+	(fp_line
+		(start -4 -2.7)
+		(end 4 -2.7)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "09958cc5-9034-4eb0-8bf6-bb2c27be24c4")
+	)
+	(fp_line
+		(start -4 2.7)
+		(end 4 2.7)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "14497c76-5084-479d-903a-be55f3e82e9e")
+	)
+	(fp_line
+		(start 4 -2.7)
+		(end 4 2.7)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "d15c6388-0087-4858-97af-c09a653e939d")
+	)
+	(fp_line
+		(start -1.95 -1.45)
+		(end -0.95 -2.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "3bc1ea76-3cdc-4a8a-815b-9a529ecae57c")
+	)
+	(fp_line
+		(start -1.95 2.45)
+		(end -1.95 -1.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "3091f91f-77fa-49ba-b835-9237e3dcd2a6")
+	)
+	(fp_line
+		(start -0.95 -2.45)
+		(end 1.95 -2.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "9002ccf2-8a60-45dc-972f-12aa0bd077fb")
+	)
+	(fp_line
+		(start 1.95 -2.45)
+		(end 1.95 2.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "4de21e3c-3f89-4f09-8840-613afff96693")
+	)
+	(fp_line
+		(start 1.95 2.45)
+		(end -1.95 2.45)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "66022c8a-1ea6-4c46-bf25-f418961567a0")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "3771af48-88aa-43ef-9adf-0247ae1807cc")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -2.78 -1.905)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "87aefb81-aa1b-47a5-87be-b6ac3fc76547")
+	)
+	(pad "2" smd rect
+		(at -2.78 -0.635)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "2f750416-bf17-4e39-b3bb-f85aa440fd50")
+	)
+	(pad "3" smd rect
+		(at -2.78 0.635)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "36f210d4-850a-42fb-b0e1-65ec6930f597")
+	)
+	(pad "4" smd rect
+		(at -2.78 1.905)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "2d2d8909-917d-4c80-a158-fe3311de7da1")
+	)
+	(pad "5" smd rect
+		(at 2.78 1.905)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "ef9095bf-950e-419f-8852-21dca4fa715a")
+	)
+	(pad "6" smd rect
+		(at 2.78 0.635)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "1a4a214d-2061-4619-b7c0-31242f4641e8")
+	)
+	(pad "7" smd rect
+		(at 2.78 -0.635)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "0cee3308-3b50-4aaa-9e72-edc792efa845")
+	)
+	(pad "8" smd rect
+		(at 2.78 -1.905)
+		(size 1.91 0.61)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "6ada3559-739a-4e69-8922-5f46c3837109")
+	)
+	(pad "9" smd rect
+		(at -0.6025 -0.775)
+		(size 1.205 1.55)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "3dea7421-f9dd-424c-a2f4-f2900864096f")
+	)
+	(pad "9" smd rect
+		(at -0.6025 0.775)
+		(size 1.205 1.55)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "73b9759e-a7a0-4881-8dc1-dcebc919dddd")
+	)
+	(pad "9" smd rect
+		(at 0.6025 -0.775)
+		(size 1.205 1.55)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "6bd4be4a-30c5-4811-8705-2d3173d4b547")
+	)
+	(pad "9" smd rect
+		(at 0.6025 0.775)
+		(size 1.205 1.55)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "c56f497b-0492-4bef-93d8-3e34169b3252")
+	)
+	(embedded_fonts no)
+	(model "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/TI_SO-PowerPAD-8.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

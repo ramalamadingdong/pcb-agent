@@ -145,6 +145,7 @@ def main() -> int:
             print(f"  stripped {stripped} existing pour(s)", file=sys.stderr)
             _lib.assert_net_table(board)
 
+        bbox_frame = None  # lazily read once, only when a pour declares a bbox
         for i, p in enumerate(pours):
             missing = [
                 k
@@ -186,7 +187,17 @@ def main() -> int:
                         f"{args.config}: [[zones.pour]] #{i + 1} bbox needs "
                         "4 values [minx, miny, maxx, maxy]"
                     )
-                cmd += ["--bbox", ",".join(str(v) for v in bb)]
+                # config is board-frame (bottom-left, Y-up) — see
+                # _lib.board_frame; kct --bbox is sheet-absolute Y-down.
+                if bbox_frame is None:
+                    fb = pcbnew.LoadBoard(str(board))
+                    if fb is None:
+                        _lib.fail(f"pcbnew could not load {board} for the frame")
+                    bbox_frame = _lib.board_frame(fb)
+                kx1, ky1 = _lib.to_kicad_xy(bbox_frame, bb[0], bb[1])
+                kx2, ky2 = _lib.to_kicad_xy(bbox_frame, bb[2], bb[3])
+                bb = [min(kx1, kx2), min(ky1, ky2), max(kx1, kx2), max(ky1, ky2)]
+                cmd += ["--bbox", ",".join(f"{v:.3f}" for v in bb)]
 
             print(f"  pour: {net} on {layer}", file=sys.stderr)
             run_kct(cmd)

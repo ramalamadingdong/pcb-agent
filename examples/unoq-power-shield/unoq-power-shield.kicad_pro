@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "filename": "unoq-power-shield.kicad_pro",
+    "version": 3
+  },
+  "net_settings": {
+    "classes": [
+      {
+        "name": "Default",
+        "track_width": 0.25,
+        "clearance": 0.15,
+        "via_diameter": 0.6,
+        "via_drill": 0.3
+      },
+      {
+        "name": "Power",
+        "clearance": 0.15,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "track_width": 0.3
+      }
+    ],
+    "meta": {
+      "version": 4
+    },
+    "netclass_patterns": [
+      {
+        "netclass": "Power",
+        "pattern": "5V"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "GND"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "VIN"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "VIN_PROT"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "VIN_RAW"
+      }
+    ]
+  }
+}

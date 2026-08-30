@@ -12,17 +12,54 @@ because the gerbers are what the factory builds.
 Written up in full at
 [mouro.ai/blog/pcb-design-with-ai](https://mouro.ai/blog/pcb-design-with-ai/).
 
+## Status: passes landed, example board unproven
+
+The build passes are in `scripts/build/` and the front half of the pipeline
+runs end to end (netlist → schematic with a clean round-trip diff → board →
+netclasses → floorplan → holes). The placement loop, routing chain and fab
+export are being proven against the example board, and **no physical board
+has been fabricated yet** — until one comes back and powers on, treat
+`examples/unoq-power-shield` as a pipeline exercise, not a verified
+reference design.
+
+If you want only the fab-output checker, it stands alone with no dependencies
+at [gerber-check](https://github.com/ramalamadingdong/gerber-check).
+
 ## Setup
 
 ```bash
-git clone https://github.com/<you>/pcb-agent && cd pcb-agent
+git clone https://github.com/ramalamadingdong/pcb-agent && cd pcb-agent
 python3 scripts/doctor.py
 ```
 
 The doctor names every missing piece and the fix for your OS. Five things have
-to line up — KiCad 9, KiCad's bundled Python, a JVM matching your Freerouting,
-the Freerouting jar, and `uv` — and each fails in a way that wastes an
-afternoon if you don't know what you're looking at.
+to line up — KiCad (9 or 10, **matching the major your boards use**: a KiCad 9
+pcbnew returns None loading a KiCad 10 board, no error), KiCad's bundled
+Python, a JVM matching your Freerouting, the Freerouting jar, and `uv` — and
+each fails in a way that wastes an afternoon if you don't know what you're
+looking at.
+
+### Or: the container
+
+The headless stages run in a container instead, so KiCad, Java and
+Freerouting never need installing by hand:
+
+```bash
+make setup     # builds the pcb-agent image; fetches the pinned Freerouting
+               # jar to tools/ for native runs, checksum-verified
+make doctor    # reports what the container satisfies
+make build route export check   # run in-container automatically when the
+                                # image exists (BOARD_DIR picks the board)
+```
+
+`./run.sh <cmd>` runs any command in the container with the repo mounted at
+/work, as your uid/gid. You still install KiCad natively to *look* at the
+board — the container has no GUI (the one X11 artifact inside is xvfb, a
+virtual framebuffer that exists solely because Freerouting 1.9.0 asks for a
+screen size it never uses). The base image is digest-pinned (`KICAD_BASE` in
+the Makefile) and must match your native KiCad major; the doctor warns on
+drift. kicad/kicad images are linux/amd64 — Apple Silicon runs them under
+emulation.
 
 Then, in Claude Code:
 
@@ -34,33 +71,6 @@ Then, in Claude Code:
 Eleven KiCad skills by Andrew Klofas — datasheet extraction, EMC, SPICE,
 sourcing from DigiKey, Mouser, LCSC and element14, fab prep for JLCPCB and
 PCBWay. MIT. This is the install that matters most.
-
-## Or: the container
-
-The headless stages — build, route, check — can run in a container
-instead, so KiCad, Java and Freerouting never need installing by hand:
-
-```bash
-make setup     # builds the pcb-agent image; also fetches the pinned
-               # Freerouting jar to tools/ for native runs, checksum-verified
-make doctor    # reports what the container satisfies
-make check     # make targets run inside the container automatically
-               # whenever the image exists — no flag to remember
-```
-
-`./run.sh <cmd>` runs any command in the container with the repo mounted at
-/work, as your uid/gid, so files it writes are yours. You still install
-KiCad natively to *look* at the board — the container has no GUI on
-purpose, and never will (see CLAUDE.md).
-
-Two things to know:
-
-- **The container's KiCad major must match the KiCad you review with.** A
-  KiCad 9 pcbnew cannot even load a board written by KiCad 10 — it returns
-  None, no error. The base image is digest-pinned as `KICAD_BASE` in the
-  Makefile; the doctor warns when host and container drift apart.
-- The kicad/kicad images are linux/amd64 only; Apple Silicon runs them
-  under emulation.
 
 ## Use
 
@@ -91,14 +101,20 @@ Working now:
 - **`commands/`** — the five slash commands.
 - **`templates/`** — `netlist.csv` schema and a commented `board.toml`.
 
+Also here now:
+
+- **`scripts/build/`** — the build passes, ported from the pipeline that
+  shipped real boards. They encode specific tool behaviour discovered by
+  getting boards back broken — `repair_pads` restoring rotation as well as
+  position, the net-table assertion after every board write, the
+  four-spacing fanout check, `silk_finish` repositioning every refdes —
+  with the comments explaining why each guard exists.
+
 Not here yet:
 
-- **The build passes.** `scripts/build/CONTRACT.md` specifies the interface
-  each must satisfy — including the ones that exist only because of specific
-  tool behaviour (`repair_pads`, the net table assertion, the four-spacing
-  fanout check, `silk_finish`). `/build` and `/route` fail until they land.
-- **A known-good example board**, to build first and confirm the pipeline
-  works before you touch your own design.
+- **An example board that has been powered on.** `examples/unoq-power-shield`
+  has a cited plan and netlist, but until one is built and brought up it is a
+  reference design nobody has verified.
 
 ## The gerber checker on its own
 
@@ -143,4 +159,7 @@ working.
 - [Freerouting](https://github.com/freerouting/freerouting)
 - [KiCad](https://www.kicad.org/)
 
-MIT.
+GPL-3.0 — the build passes import `pcbnew`, which is GPL-3.0, and now that
+they've landed the repo follows.
+[gerber-check](https://github.com/ramalamadingdong/gerber-check) is pure
+stdlib text parsing, links nothing, and stays MIT.

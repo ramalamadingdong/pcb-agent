@@ -94,7 +94,7 @@ from pathlib import Path
 import pcbnew
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import count_segments, emit, fail, load_config, pass_parser  # noqa: E402
+from _lib import board_frame, count_segments, emit, fail, load_config, pass_parser, to_kicad_xy  # noqa: E402
 
 EPS = 1000  # 1 um in KiCad nm units
 
@@ -228,13 +228,14 @@ def power_matcher(cfg):
     return is_power
 
 
-def config_keepouts(cfg, name_of):
-    """`[[keepouts]]` boxes, in absolute mm, as rule boxes.
+def config_keepouts(cfg, name_of, frame):
+    """`[[keepouts]]` boxes as rule boxes.
 
     The same schema add_keepouts.py materialises into KiCad rule areas, read
     again here so this pass is correct on a board where that pass has not run
     — and honouring the same `allow_tracks` / `allow_vias` opt-outs, so a
     keepout that only bans pours does not silently ban routing too.
+    Config is board-frame (bottom-left, Y-up) — see _lib.board_frame.
     """
     FM = pcbnew.FromMM
     ids_by_name = {v: k for k, v in name_of.items()}
@@ -245,6 +246,8 @@ def config_keepouts(cfg, name_of):
                               float(ko["x2"]), float(ko["y2"]))
         except (KeyError, TypeError, ValueError):
             fail(f"[[keepouts]] {ko.get('name', '?')}: needs x1,y1,x2,y2 in mm")
+        kx1, ky1 = to_kicad_xy(frame, x1, y1)
+        kx2, ky2 = to_kicad_xy(frame, x2, y2)
         names = ko.get("layers") or list(ids_by_name)
         lys = set()
         for n in names:
@@ -255,8 +258,8 @@ def config_keepouts(cfg, name_of):
         novias = not bool(ko.get("allow_vias", False))
         if not (notracks or novias):
             continue
-        out.append((FM(min(x1, x2)), FM(max(x1, x2)),
-                    FM(min(y1, y2)), FM(max(y1, y2)), notracks, novias, lys))
+        out.append((FM(min(kx1, kx2)), FM(max(kx1, kx2)),
+                    FM(min(ky1, ky2)), FM(max(ky1, ky2)), notracks, novias, lys))
     return out
 
 
@@ -330,7 +333,7 @@ def main() -> int:
             rule_boxes.append((bb.GetLeft(), bb.GetRight(), bb.GetTop(), bb.GetBottom(),
                                bool(z.GetDoNotAllowTracks()), bool(z.GetDoNotAllowVias()),
                                lys))
-    rule_boxes += config_keepouts(cfg, name_of)
+    rule_boxes += config_keepouts(cfg, name_of, board_frame(b))
 
     def net_w(net):
         return POWER_W if is_power(net.GetNetname()) else TRACK_W

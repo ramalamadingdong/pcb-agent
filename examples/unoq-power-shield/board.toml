@@ -96,7 +96,7 @@ extra_footprints = ["MountingHole_3.2mm"]
 [[libs.symbols]]
 name = "TPS54331"
 reference = "U"
-footprint = "HSOIC-8-1EP"
+footprint = "TI_SO-PowerPAD-8"
 description = "TI TPS54331 3A 28V buck, SO-8 PowerPAD (TPS54331DDAR.pdf sec.5)"
 datasheet = "docs/datasheets/TPS54331DDAR.pdf"
 pins = [
@@ -114,7 +114,7 @@ pins = [
 [[libs.symbols]]
 name = "INA226"
 reference = "U"
-footprint = "VSSOP-10"
+footprint = "MSOP-10_3x3mm_P0.5mm"
 description = "TI INA226 36V current/power monitor (INA226AIDGSR.pdf Table 4-1)"
 datasheet = "docs/datasheets/INA226AIDGSR.pdf"
 pins = [
@@ -133,7 +133,7 @@ pins = [
 [[libs.symbols]]
 name = "AO4407A"
 reference = "Q"
-footprint = "SOIC-8"
+footprint = "SOIC-8_3.9x4.9mm_P1.27mm"
 description = "AOS AO4407A -30V P-FET (AO4407A.pdf p.1: 1-3 S, 4 G, 5-8 D)"
 datasheet = "docs/datasheets/AO4407A.pdf"
 pins = [
@@ -190,11 +190,11 @@ value = "22uF 25V"
 
 [parts.U1]
 symbol = "unoq_power_shield:TPS54331"
-footprint = "Package_SO:HSOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.1mm"
+footprint = "Package_SO:TI_SO-PowerPAD-8"
 value = "TPS54331DDAR"
 [parts.U2]
 symbol = "unoq_power_shield:INA226"
-footprint = "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+footprint = "Package_SO:MSOP-10_3x3mm_P0.5mm"
 value = "INA226AIDGSR"
 [parts.Q1]
 symbol = "Transistor_FET:BSS138"
@@ -226,19 +226,19 @@ footprint = "Diode_SMD:D_SOD-123"
 value = "BZT52C12"
 [parts.D3]
 symbol = "unoq_power_shield:XL1615RGBC"
-footprint = "unoq_power_shield:XL1615RGBC"
+footprint = "XL1615RGBC"
 value = "XL-1615RGBC-RF"
 [parts.L1]
 symbol = "Device:L"
-footprint = "unoq_power_shield:SWPA6045S"
+footprint = "SWPA6045S"
 value = "10uH"
 [parts.J1]
 symbol = "Connector:Screw_Terminal_01x02"
-footprint = "unoq_power_shield:KF301_5.0_2P"
+footprint = "KF301_5.0_2P"
 value = "VIN 7-24V"
 [parts.J2]
 symbol = "Connector:Screw_Terminal_01x02"
-footprint = "unoq_power_shield:KF301_5.0_2P"
+footprint = "KF301_5.0_2P"
 value = "5V OUT"
 [parts.J3]
 symbol = "Connector_Generic_MountingPin:Conn_01x04_MountingPin"
@@ -316,30 +316,30 @@ note = "digital high: D8(26.92) up to D21(49.78)"
 
 [[floorplan.place]]
 ref = "J1"
-x = 9.0
+x = 17.0
 y = 5.0
 rotation = 180
 note = "VIN screw terminal, wire entry at the bottom edge"
 [[floorplan.place]]
 ref = "J2"
-x = 25.0
+x = 28.0
 y = 5.0
 rotation = 180
 [[floorplan.place]]
 ref = "Q5"
-x = 7.0
+x = 8.5
 y = 12.0
 rotation = 0
 note = "reverse-polarity P-FET, first thing after J1"
 [[floorplan.place]]
 ref = "R2"
-x = 12.0
-y = 10.0
+x = 16.5
+y = 10.5
 rotation = 0
 [[floorplan.place]]
 ref = "D2"
-x = 12.0
-y = 14.0
+x = 13.0
+y = 10.5
 rotation = 0
 [[floorplan.place]]
 ref = "R1"
@@ -349,7 +349,7 @@ rotation = 90
 note = "shunt directly below U2 - kelvin sense traces stay a few mm"
 [[floorplan.place]]
 ref = "U2"
-x = 7.0
+x = 8.5
 y = 27.0
 rotation = 0
 note = "INA226 right above the shunt; J10 VIN pin lands at (2.54, 22.86) beside it"
@@ -371,12 +371,12 @@ rotation = 0
 note = "buck; PowerPAD region drives [[thermal_vias]]"
 [[floorplan.place]]
 ref = "C1"
-x = 15.0
+x = 14.5
 y = 27.5
 rotation = 0
 [[floorplan.place]]
 ref = "C2"
-x = 19.0
+x = 19.5
 y = 27.5
 rotation = 0
 [[floorplan.place]]
@@ -392,8 +392,8 @@ rotation = 0
 note = "boot cap by BOOT/PH corner"
 [[floorplan.place]]
 ref = "D1"
-x = 26.0
-y = 17.0
+x = 25.5
+y = 16.5
 rotation = 0
 note = "catch diode tight to PH and GND"
 [[floorplan.place]]
@@ -519,35 +519,35 @@ rotation = 0
 note = "5V IO header (DNP)"
 [[floorplan.place]]
 ref = "D3"
-x = 44.0
-y = 52.0
+x = 42.0
+y = 55.5
 rotation = 0
 [[floorplan.place]]
 ref = "R17"
-x = 47.5
-y = 55.0
+x = 45.5
+y = 58.0
 rotation = 0
 [[floorplan.place]]
 ref = "R18"
-x = 47.5
-y = 52.0
+x = 45.5
+y = 55.5
 rotation = 0
 [[floorplan.place]]
 ref = "R19"
-x = 47.5
-y = 49.0
+x = 45.5
+y = 53.0
 rotation = 0
 [[floorplan.place]]
 ref = "J3"
-x = 6.0
-y = 55.0
-rotation = 90
+x = 2.0
+y = 46.5
+rotation = 270
 note = "Qwiic, mouth toward the left edge"
 [[floorplan.place]]
 ref = "J4"
-x = 6.0
-y = 47.0
-rotation = 90
+x = 41.5
+y = 3.2
+rotation = 180
 
 # ----------------------------------------------------------- build: route
 
