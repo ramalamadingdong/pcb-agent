@@ -1,0 +1,8 @@
+# Nothing in the build context is COPY'd today, but keep the context small
+# and deterministic anyway.
+.git/
+mnt/
+fab/
+build/
+tools/
+*.log

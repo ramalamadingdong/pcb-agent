@@ -35,6 +35,33 @@ Eleven KiCad skills by Andrew Klofas — datasheet extraction, EMC, SPICE,
 sourcing from DigiKey, Mouser, LCSC and element14, fab prep for JLCPCB and
 PCBWay. MIT. This is the install that matters most.
 
+## Or: the container
+
+The headless stages — build, route, check — can run in a container
+instead, so KiCad, Java and Freerouting never need installing by hand:
+
+```bash
+make setup     # builds the pcb-agent image; also fetches the pinned
+               # Freerouting jar to tools/ for native runs, checksum-verified
+make doctor    # reports what the container satisfies
+make check     # make targets run inside the container automatically
+               # whenever the image exists — no flag to remember
+```
+
+`./run.sh <cmd>` runs any command in the container with the repo mounted at
+/work, as your uid/gid, so files it writes are yours. You still install
+KiCad natively to *look* at the board — the container has no GUI on
+purpose, and never will (see CLAUDE.md).
+
+Two things to know:
+
+- **The container's KiCad major must match the KiCad you review with.** A
+  KiCad 9 pcbnew cannot even load a board written by KiCad 10 — it returns
+  None, no error. The base image is digest-pinned as `KICAD_BASE` in the
+  Makefile; the doctor warns when host and container drift apart.
+- The kicad/kicad images are linux/amd64 only; Apple Silicon runs them
+  under emulation.
+
 ## Use
 
 ```

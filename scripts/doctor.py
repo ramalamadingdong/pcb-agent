@@ -26,6 +26,12 @@ OK, BAD, WARN = "OK", "MISSING", "WARN"
 MIN_KICAD = 9
 MIN_PY = (3, 11)
 
+# The build container (see Dockerfile / run.sh). When the image is present,
+# kicad/pcbnew/java/freerouting missing from the host is not a problem — the
+# Makefile runs those stages inside the container.
+IMAGE = os.environ.get("PCB_AGENT_IMAGE", "pcb-agent")
+IN_CONTAINER = os.environ.get("PCB_AGENT_CONTAINER") == "1"
+
 
 def sh(cmd: list[str], timeout: int = 20) -> tuple[int, str]:
     try:
@@ -43,6 +49,11 @@ class Doc:
     def __init__(self) -> None:
         self.rows: list[tuple[str, str, str, str]] = []
         self.os = platform.system()
+        # Filled by check_container when the image is usable:
+        # {"kicad_cli": "9.0.9", "java": "...", "jar": "/opt/...", ...}
+        self.container: dict[str, str] | None = None
+        # Filled by check_java so check_freerouting can pair jar <-> JVM.
+        self.java_major: int | None = None
 
     def add(self, status: str, name: str, detail: str, fix: str = "") -> None:
         self.rows.append((status, name, detail, fix))
@@ -77,6 +88,50 @@ class Doc:
 # --------------------------------------------------------------------------
 
 
+def check_container(doc: Doc) -> None:
+    """Probe the build container once; later checks consult the result.
+
+    One `docker run` answers everything — versions read from inside the
+    container, not assumed from the Dockerfile that built it.
+    """
+    if IN_CONTAINER:
+        doc.add(OK, "container",
+                "running inside the image — rows below are the container's own tools")
+        return
+    if not shutil.which("docker"):
+        doc.add(WARN, "container", "docker not on PATH",
+                "Optional — native tools work too. With docker installed,\n"
+                "`make setup` builds an image carrying KiCad, Java and\n"
+                "Freerouting so none of them need installing by hand.")
+        return
+    rc, _ = sh(["docker", "image", "inspect", IMAGE])
+    if rc != 0:
+        doc.add(WARN, "container", f"image '{IMAGE}' not built",
+                "`make setup` builds it (or the docker daemon isn't running).")
+        return
+    probe = (
+        'echo "kicad_cli=$(kicad-cli --version 2>/dev/null | head -1)"; '
+        'echo "java=$(java -version 2>&1 | head -1)"; '
+        '[ -f "$FREEROUTING_JAR" ] && echo "jar=$FREEROUTING_JAR"; '
+        'echo "pcbnew=$(python3 -c \'import pcbnew; print(pcbnew.GetBuildVersion())\' 2>/dev/null)"; '
+        'echo "uv=$(uv --version 2>/dev/null)"'
+    )
+    rc, out = sh(["docker", "run", "--rm", IMAGE, "sh", "-c", probe], timeout=60)
+    if rc != 0:
+        doc.add(WARN, "container", f"image '{IMAGE}' present but won't run: {out[:60]}")
+        return
+    info: dict[str, str] = {}
+    for line in out.splitlines():
+        if "=" in line:
+            k, _, v = line.partition("=")
+            if v.strip():
+                info[k.strip()] = v.strip()
+    doc.container = info
+    doc.add(OK, "container",
+            f"image '{IMAGE}'  (kicad-cli {info.get('kicad_cli', '?')}, "
+            f"freerouting {'yes' if 'jar' in info else 'MISSING'})")
+
+
 def check_python(doc: Doc) -> None:
     v = sys.version_info
     if v >= MIN_PY:
@@ -92,6 +147,11 @@ def check_python(doc: Doc) -> None:
 
 def check_kicad_cli(doc: Doc) -> None:
     exe = shutil.which("kicad-cli")
+    if not exe and doc.container:
+        doc.add(OK, "kicad-cli",
+                f"not on host; container provides {doc.container.get('kicad_cli', '?')}. "
+                "Install KiCad natively too when you want to LOOK at the board.")
+        return
     if not exe:
         fixes = {
             "Darwin": "brew install --cask kicad\n"
@@ -105,7 +165,31 @@ def check_kicad_cli(doc: Doc) -> None:
     rc, out = sh(["kicad-cli", "--version"])
     m = re.search(r"(\d+)\.(\d+)", out)
     if m and int(m.group(1)) >= MIN_KICAD:
-        doc.add(OK, "kicad-cli", f"{m.group(0)}  ({exe})")
+        # Host and container drifting apart is the failure mode the container
+        # design creates: the board you review natively is not quite the
+        # board the container built. Warn on a major-version gap.
+        cver = (doc.container or {}).get("kicad_cli", "")
+        cm = re.match(r"(\d+)\.", cver)
+        if cm and int(cm.group(1)) != int(m.group(1)):
+            doc.add(
+                WARN,
+                "kicad-cli",
+                f"host {m.group(0)} vs container {cver} — major versions differ",
+                "The container builds the board; the host is what you review\n"
+                "it with. A major-version gap means file-format and behaviour\n"
+                "drift. Rebuild the image or change the host KiCad to match.",
+            )
+        else:
+            doc.add(OK, "kicad-cli", f"{m.group(0)}  ({exe})")
+    elif m and doc.container:
+        doc.add(
+            WARN,
+            "kicad-cli",
+            f"host {m.group(0)} is older than {MIN_KICAD}; container provides "
+            f"{doc.container.get('kicad_cli', '?')}",
+            "The container runs the pipeline, but this host KiCad may not\n"
+            "even open the boards it produces. Upgrade the host KiCad.",
+        )
     elif m:
         doc.add(
             BAD,
@@ -136,6 +220,10 @@ def check_pcbnew(doc: Doc) -> None:
             note = "" if exe == sys.executable else f"  (use: {exe})"
             doc.add(OK, "pcbnew", f"{out.splitlines()[-1]}{note}")
             return
+    if doc.container and doc.container.get("pcbnew"):
+        doc.add(OK, "pcbnew",
+                f"not importable on host; container provides {doc.container['pcbnew']}")
+        return
     fixes = {
         "Darwin": "KiCad ships its own Python. Run build scripts with:\n"
         "/Applications/KiCad/KiCad.app/Contents/Frameworks/"
@@ -154,20 +242,25 @@ def check_pcbnew(doc: Doc) -> None:
 
 def check_java(doc: Doc) -> None:
     exe = shutil.which("java")
+    if not exe and doc.container and doc.container.get("java"):
+        doc.add(OK, "java", f"not on host; container provides {doc.container['java']}")
+        return
     if not exe:
         doc.add(
             BAD,
             "java",
             "not on PATH",
-            "Freerouting needs a JVM. Install a JDK 21 build:\n"
-            "  macOS:  brew install openjdk@21\n"
-            "  Ubuntu: sudo apt install openjdk-21-jre",
+            "Freerouting needs a JVM — 25+ for the pinned 2.x release\n"
+            "(Freerouting 2.3.0 is compiled for class-file 69 = Java 25):\n"
+            "  macOS:  brew install temurin@25\n"
+            "  Ubuntu: install a Temurin 25 JRE from adoptium.net",
         )
         return
     rc, out = sh(["java", "-version"])
     m = re.search(r'"?(\d+)[.\"]', out)
     if m:
         major = int(m.group(1))
+        doc.java_major = major
         if major >= 21:
             doc.add(OK, "java", f"{major}")
         else:
@@ -189,8 +282,27 @@ def check_freerouting(doc: Doc) -> None:
     search += list(Path.home().glob("freerouting*/freerouting*.jar"))
     for p in search:
         if p.exists():
-            doc.add(OK, "freerouting", str(p))
+            # Pair the jar with the JVM found earlier. Freerouting 2.x is
+            # compiled for Java 25 (class-file 69); a Java 21 that happily
+            # runs 1.9.0 dies on 2.3.0 with UnsupportedClassVersionError.
+            jm = re.search(r"freerouting-(\d+)\.", p.name)
+            jar_major = int(jm.group(1)) if jm else None
+            java_major = getattr(doc, "java_major", None)
+            if jar_major and jar_major >= 2 and java_major and java_major < 25:
+                doc.add(
+                    WARN,
+                    "freerouting",
+                    f"{p} needs Java 25+, host java is {java_major}",
+                    "Freerouting 2.x is compiled for Java 25. Upgrade the JVM\n"
+                    "or run routing in the container (which carries both).",
+                )
+            else:
+                doc.add(OK, "freerouting", str(p))
             return
+    if doc.container and doc.container.get("jar"):
+        doc.add(OK, "freerouting",
+                f"not on host; container provides {doc.container['jar']}")
+        return
     doc.add(
         BAD,
         "freerouting",
@@ -246,6 +358,7 @@ def check_skills(doc: Doc) -> None:
 
 
 CHECKS = [
+    check_container,  # first — later checks consult its probe
     check_python,
     check_git,
     check_kicad_cli,

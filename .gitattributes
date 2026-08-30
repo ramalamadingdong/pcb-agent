@@ -1,0 +1,6 @@
+# Everything in this repo runs on Linux (container) as well as the host.
+# Keep LF in the working tree on every OS — a CRLF shebang breaks in the
+# container with a misleading "bad interpreter" error.
+* text=auto eol=lf
+*.png binary
+*.jar binary
