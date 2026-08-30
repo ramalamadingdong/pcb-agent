@@ -61,13 +61,19 @@ def assert_net_table(board_path: str | Path) -> int:
     nothing, silently. Run this after every pass that writes the board.
     """
     text = Path(board_path).read_text(encoding="utf-8", errors="replace")
+    # Two dialects exist: the numbered table `(net 1 "GND")` (kct and
+    # KiCad <= 8 style) and the name-only references `(net "GND")` that
+    # pcbnew 10's SaveBoard writes. Either proves nets survived the write;
+    # zero of both is the stripped-table disaster.
     n = len(re.findall(r'^\s*\(net\s+\d+\s+"', text, re.M))
-    if n <= 1:  # net 0 "" is always present, even in a stripped file
+    n_named = len(re.findall(r'\(net\s+"[^"]+"\)', text))
+    if n <= 1 and n_named == 0:  # net 0 "" is always present, even stripped
         fail(
-            f"{board_path}: net table is empty ({n} net entries) — "
-            "a board write stripped it; the router would silently no-op"
+            f"{board_path}: net table is empty ({n} numbered, {n_named} named "
+            "net entries) — a board write stripped it; the router would "
+            "silently no-op"
         )
-    return n
+    return max(n, n_named)
 
 
 def board_frame(board) -> tuple[float, float]:

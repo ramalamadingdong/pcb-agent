@@ -333,12 +333,12 @@ rotation = 0
 note = "reverse-polarity P-FET, first thing after J1"
 [[floorplan.place]]
 ref = "R2"
-x = 16.5
+x = 18.5
 y = 10.5
 rotation = 0
 [[floorplan.place]]
 ref = "D2"
-x = 13.0
+x = 15.0
 y = 10.5
 rotation = 0
 [[floorplan.place]]
@@ -381,7 +381,7 @@ y = 27.5
 rotation = 0
 [[floorplan.place]]
 ref = "C3"
-x = 23.0
+x = 24.0
 y = 27.5
 rotation = 0
 [[floorplan.place]]
@@ -539,7 +539,7 @@ y = 53.0
 rotation = 0
 [[floorplan.place]]
 ref = "J3"
-x = 2.0
+x = 3.3
 y = 46.5
 rotation = 270
 note = "Qwiic, mouth toward the left edge"

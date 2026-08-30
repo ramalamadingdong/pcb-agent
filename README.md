@@ -25,6 +25,12 @@ reference design.
 If you want only the fab-output checker, it stands alone with no dependencies
 at [gerber-check](https://github.com/ramalamadingdong/gerber-check).
 
+Platform honesty: developed and verified on Linux (WSL) — the container
+path, the clean-box doctor advice, and the whole pipeline. **macOS is
+untested**: `doctor.py`'s KiCad.app python path was written from
+documentation, not a Mac, and is the most likely thing to be wrong. If you
+hit it, an issue with your `doctor.py` output is gold.
+
 ## Setup
 
 ```bash

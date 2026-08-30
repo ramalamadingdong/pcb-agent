@@ -55,6 +55,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import subprocess
@@ -92,21 +93,69 @@ def run_kct(args: list[str]) -> str:
     return out
 
 
-def strip_pours(board_path: Path) -> int:
-    """Remove every copper pour, keeping rule areas.
+def strip_pours(board_path: Path, bbox_pours: list[dict]) -> tuple[int, list[str]]:
+    """Remove every copper pour (keeping rule areas), then create the
+    bounded (bbox) pours — all in ONE pcbnew session.
 
     Rule areas are zones as far as pcbnew is concerned, and they belong to
     add_keepouts.py.  Removing them here would quietly delete the antenna
     band and every plane no-routing area on the next zones run.
+
+    The bbox pours happen here rather than in a later step because a
+    second pcbnew.LoadBoard in the same process can hand back a bare
+    SwigPyObject with no BOARD methods (stale SWIG wrappers — the same
+    trap the cleanup pass documents). One load, one save. They go through
+    pcbnew at all because the pinned kct's `zones add` advertises --bbox
+    in its subparser but its top-level CLI rejects it.
     """
     b = pcbnew.LoadBoard(str(board_path))
+    if b is None:
+        _lib.fail(f"pcbnew could not load {board_path}")
     doomed = [z for z in b.Zones() if not z.GetIsRuleArea()]
-    if not doomed:
-        return 0
     for z in doomed:
         b.Remove(z)
-    pcbnew.SaveBoard(str(board_path), b)
-    return len(doomed)
+
+    created: list[str] = []
+    if bbox_pours:
+        # config is board-frame (bottom-left, Y-up) — see _lib.board_frame
+        frame = _lib.board_frame(b)
+        FM = pcbnew.FromMM
+        for p in bbox_pours:
+            net = str(p["net"])
+            layer = layer_name(str(p["layer"]))
+            bb = [float(v) for v in p["bbox"]]
+            kx1, ky1 = _lib.to_kicad_xy(frame, bb[0], bb[1])
+            kx2, ky2 = _lib.to_kicad_xy(frame, bb[2], bb[3])
+            x1, x2 = sorted((kx1, kx2))
+            y1, y2 = sorted((ky1, ky2))
+            netinfo = b.FindNet(net)
+            if netinfo is None:
+                _lib.fail(f"[[zones.pour]] bbox: net {net!r} is not on the board")
+            lid = b.GetLayerID(layer)
+            if lid < 0:
+                _lib.fail(f"[[zones.pour]] bbox: unknown layer {layer!r}")
+            z = pcbnew.ZONE(b)
+            z.SetLayer(lid)
+            z.SetLocalClearance(FM(float(p["clearance_mm"])))
+            z.SetMinThickness(FM(float(p["min_thickness_mm"])))
+            if "priority" in p:
+                z.SetAssignedPriority(int(p["priority"]))
+            z.SetZoneName(f"POUR_{net}_{layer}")
+            sps = z.Outline()
+            sps.NewOutline()
+            for px, py in ((x1, y1), (x2, y1), (x2, y2), (x1, y2)):
+                sps.Append(FM(px), FM(py))
+            b.Add(z)
+            # Net AFTER Add: adding a zone to the board resets its net to 0
+            # (a net-less pour is dead copper the verification below flags).
+            z.SetNetCode(netinfo.GetNetCode())
+            if z.GetNetname() != net:
+                _lib.fail(f"bbox pour net assignment failed: got {z.GetNetname()!r}, wanted {net!r}")
+            created.append(f"{net}@{layer}")
+
+    if doomed or created:
+        pcbnew.SaveBoard(str(board_path), b)
+    return len(doomed), created
 
 
 def main() -> int:
@@ -140,12 +189,7 @@ def main() -> int:
                 "an unpoured 4-layer board is almost never what you meant"
             )
 
-        stripped = strip_pours(board)
-        if stripped:
-            print(f"  stripped {stripped} existing pour(s)", file=sys.stderr)
-            _lib.assert_net_table(board)
-
-        bbox_frame = None  # lazily read once, only when a pour declares a bbox
+        # Validate every pour up front, split bounded from full-board.
         for i, p in enumerate(pours):
             missing = [
                 k
@@ -157,6 +201,25 @@ def main() -> int:
                     f"{args.config}: [[zones.pour]] #{i + 1} is missing "
                     + ", ".join(missing)
                 )
+            if "bbox" in p and len([float(v) for v in p["bbox"]]) != 4:
+                _lib.fail(
+                    f"{args.config}: [[zones.pour]] #{i + 1} bbox needs "
+                    "4 values [minx, miny, maxx, maxy]"
+                )
+        bbox_pours = [p for p in pours if "bbox" in p]
+        kct_pours = [p for p in pours if "bbox" not in p]
+
+        stripped, created = strip_pours(board, bbox_pours)
+        if stripped:
+            print(f"  stripped {stripped} existing pour(s)", file=sys.stderr)
+        for name in created:
+            print(f"  pour: {name} (bbox, via pcbnew)", file=sys.stderr)
+        if stripped or created:
+            _lib.assert_net_table(board)
+        added += [{"net": p["net"], "layer": layer_name(str(p["layer"]))}
+                  for p in bbox_pours]
+
+        for p in kct_pours:
             net = str(p["net"])
             layer = layer_name(str(p["layer"]))
             cmd = [
@@ -180,25 +243,6 @@ def main() -> int:
                 cmd += ["--thermal-gap", str(float(p["thermal_gap_mm"]))]
             if "thermal_bridge_mm" in p:
                 cmd += ["--thermal-bridge", str(float(p["thermal_bridge_mm"]))]
-            if "bbox" in p:
-                bb = [float(v) for v in p["bbox"]]
-                if len(bb) != 4:
-                    _lib.fail(
-                        f"{args.config}: [[zones.pour]] #{i + 1} bbox needs "
-                        "4 values [minx, miny, maxx, maxy]"
-                    )
-                # config is board-frame (bottom-left, Y-up) — see
-                # _lib.board_frame; kct --bbox is sheet-absolute Y-down.
-                if bbox_frame is None:
-                    fb = pcbnew.LoadBoard(str(board))
-                    if fb is None:
-                        _lib.fail(f"pcbnew could not load {board} for the frame")
-                    bbox_frame = _lib.board_frame(fb)
-                kx1, ky1 = _lib.to_kicad_xy(bbox_frame, bb[0], bb[1])
-                kx2, ky2 = _lib.to_kicad_xy(bbox_frame, bb[2], bb[3])
-                bb = [min(kx1, kx2), min(ky1, ky2), max(kx1, kx2), max(ky1, ky2)]
-                cmd += ["--bbox", ",".join(f"{v:.3f}" for v in bb)]
-
             print(f"  pour: {net} on {layer}", file=sys.stderr)
             run_kct(cmd)
             # A pour add rewrites the board.  Check the net table every time:
@@ -220,15 +264,36 @@ def main() -> int:
         _lib.assert_net_table(board)
         filled = True
 
-    b = pcbnew.LoadBoard(str(board))
-    zones = list(b.Zones())
-    pour_zones = [z for z in zones if not z.GetIsRuleArea()]
-    unfilled = [z for z in pour_zones if not z.IsFilled()]
+    # Verify in a FRESH interpreter: a second pcbnew.LoadBoard in a process
+    # that already added/removed zones hands back a bare SwigPyObject with
+    # no BOARD methods (stale SWIG wrappers). A subprocess sees clean state.
+    verify_src = (
+        "import json, sys, pcbnew\n"
+        "b = pcbnew.LoadBoard(sys.argv[1])\n"
+        "out = []\n"
+        "for z in b.Zones():\n"
+        "    if z.GetIsRuleArea():\n"
+        "        out.append({'rule_area': True})\n"
+        "        continue\n"
+        "    out.append({'rule_area': False, 'net': z.GetNetname(),\n"
+        "                'layer': b.GetLayerName(z.GetLayer()),\n"
+        "                'filled': bool(z.IsFilled()),\n"
+        "                'area_mm2': z.GetFilledArea() / 1e12})\n"
+        "print(json.dumps(out))\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", verify_src, str(board)],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        _lib.fail(f"zone verification subprocess failed: {proc.stderr.strip()[-300:]}")
+    info = json.loads(proc.stdout.strip().splitlines()[-1])
+    pour_zones = [z for z in info if not z["rule_area"]]
+    unfilled = [z for z in pour_zones if not z["filled"]]
     for z in pour_zones:
         print(
-            f"  {z.GetNetname() or '<no net>':<8} "
-            f"{b.GetLayerName(z.GetLayer()):<8} "
-            f"filled={z.IsFilled()} area={z.GetFilledArea() / 1e12:.1f} mm2",
+            f"  {(z['net'] or '<no net>'):<8} {z['layer']:<8} "
+            f"filled={z['filled']} area={z['area_mm2']:.1f} mm2",
             file=sys.stderr,
         )
     if filled and unfilled:
@@ -243,9 +308,9 @@ def main() -> int:
         stripped=stripped,
         pours_added=added,
         pour_zones=len(pour_zones),
-        rule_areas=len(zones) - len(pour_zones),
+        rule_areas=len(info) - len(pour_zones),
         filled=filled,
-        filled_area_mm2=round(sum(z.GetFilledArea() for z in pour_zones) / 1e12, 1),
+        filled_area_mm2=round(sum(z["area_mm2"] for z in pour_zones), 1),
     )
     return 0
 
