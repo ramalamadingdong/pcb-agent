@@ -1,0 +1,61 @@
+# board.toml — UNO Q power & I/O demo shield (rev 1)
+# Every rule here has a physical reason on THIS board — see rev-1-plan.md
+# ("Board rules this design exercises"). Coordinates are the UNO Q fab
+# frame: portrait, origin bottom-left of the top view, X across 53.34 mm,
+# Y along 68.58 mm, antenna/USB-C edge at Y = 68.58.
+
+[board]
+name = "unoq-power-shield"
+
+[layers]
+# L2 = solid GND under the switcher, L3 = power plane. Any track on these
+# breaks the return path the buck's ripple current depends on.
+planes = ["In1_Cu", "In2_Cu"]
+
+[nets.power]
+# VIN carries up to 4 A worst case (IPC-2221 math in the plan: 2.0 mm
+# design width). 0.8 mm is the checker FLOOR — it exists to catch the
+# generated-netclass failure where power routes at the 0.2 mm default.
+patterns = ["VIN", "VIN_PROT", "5V", "+5V", "GND", "3V3", "+3V3"]
+min_width_mm = 0.8
+
+[silkscreen]
+# JLC clips silk past the outline; boards print bare.
+margin_mm = 0.0
+
+[mounting_holes]
+# Fixed by the UNO form factor — drill file T08 block, not ours to choose:
+# (50.80, 53.34), (35.56, 2.54), (7.62, 2.54), (2.54, 54.61).
+count = 4
+diameter_mm = 3.2
+tolerance_mm = 0.05
+
+[fiducials]
+# JLCPCB assembly. Must carry X2 AperFunction tags — a previous board
+# shipped bare copper dots the checker could not see (rev D2 lesson).
+count = 3
+min_collinear_deviation_mm = 1.0
+
+# The most instructive rule on the board: the UNO Q's Wi-Fi PCB antenna
+# sits directly under this region (measured from Arduino's own top.art:
+# copper spans X 0.76-22.1, Y 63.9-68.07; margin added). Copper here —
+# any layer, pads included — detunes the radio of the board underneath.
+[[keepouts]]
+name = "unoq_wifi_antenna"
+x1 = 0.0
+y1 = 61.0
+x2 = 26.0
+y2 = 68.58
+layers = ["F_Cu", "In1_Cu", "In2_Cu", "B_Cu"]
+
+# The buck's PowerPAD needs stitched vias to the GND plane — it is the
+# only path that keeps U1 within ~35 degC of ambient at full load.
+# x1/y1/x2/y2 = U1's exposed-pad region: FILL IN AFTER FLOORPLAN pins
+# U1's position (gate in rev-1-plan.md blocks ordering until then).
+# [[thermal_vias]]
+# name = "buck_powerpad"
+# x1 = 0.0
+# y1 = 0.0
+# x2 = 0.0
+# y2 = 0.0
+# min_count = 6
