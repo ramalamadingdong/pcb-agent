@@ -103,12 +103,46 @@ def main() -> int:
     log("loaded:", b.GetFileName())
     log("tracks:", n_tracks, "footprints:", n_fps, "nets:", b.GetNetCount())
 
+    # ---- surface pours: keep them OUT of the DSN ---------------------------
+    # ExportSpecctraDSN writes every zone as a Specctra (plane ...), and
+    # freerouting treats a plane as fixed copper the other nets must clear.
+    # A ground flood on a routable layer therefore walls off that whole
+    # layer and the router runs out of room (measured: 16 nets unfinished
+    # on a 2-signal-layer board whose F.Cu carried the GND flood). Surface
+    # pours don't need router awareness — the post-route fill re-carves
+    # them around whatever copper exists — so remove them from the
+    # IN-MEMORY board only (never saved). Pours on declared plane layers
+    # stay: they are the (plane) semantics the router must respect.
+    plane_ids = {b.GetLayerID(dsn_layer(n)) for n in planes}
+    surface_pours = [
+        z for z in b.Zones()
+        if not z.GetIsRuleArea()
+        and not any(z.IsOnLayer(l) for l in plane_ids if l >= 0)
+    ]
+    for z in surface_pours:
+        b.Remove(z)
+    if surface_pours:
+        log(f"withheld {len(surface_pours)} surface pour(s) from the DSN "
+            "(re-poured after routing)")
+
     ok = pcbnew.ExportSpecctraDSN(b, args.out)
     log("ExportSpecctraDSN ->", ok)
     if not ok:
         fail(f"ExportSpecctraDSN failed writing {args.out}")
 
     text = Path(args.out).read_text(encoding="utf-8")
+
+    # ---- class names: no commas ---------------------------------------------
+    # KiCad 10 exports composite netclass names like "Power,Default". A comma
+    # inside an unquoted Specctra token splits it, so freerouting 1.9.0 never
+    # binds those nets to their class and routes them at the DEFAULT width —
+    # exactly the thin-power failure the gerber checker then flags.
+    def _fix_class(m: "re.Match[str]") -> str:
+        return "(class " + m.group(1).replace(",", "_")
+
+    text, n_cls = re.subn(r"\(class\s+([^\s()]+)", _fix_class, text)
+    if n_cls:
+        log(f"sanitised {n_cls} class name(s) (commas -> _)")
 
     # ---- plane layers: (type signal) -> (type power) ------------------------
     # pcbnew exports every copper layer as (type signal); freerouting will not

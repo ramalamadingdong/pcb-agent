@@ -1,0 +1,635 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-08-30T20:25:49",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error"
+    ],
+    "kicad_version": "10.0.5",
+    "schematic_parity": [],
+    "source": "unoq-power-shield.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Zone [GND] on F.Cu, priority 1",
+                    "pos": {
+                        "x": 121.83,
+                        "y": 70.71
+                    },
+                    "uuid": "b9e5adac-0bee-47c7-8396-ec3d9d3ba56c"
+                },
+                {
+                    "description": "Zone [GND] on In1.Cu, priority 0",
+                    "pos": {
+                        "x": 121.83,
+                        "y": 70.71
+                    },
+                    "uuid": "8c9d4f04-f100-4d0d-8c7f-5d692c3ac47b"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 3 [RGB_G] of D3 on F.Cu",
+                    "pos": {
+                        "x": 165.455,
+                        "y": 105.815
+                    },
+                    "uuid": "b3a79a1a-3bc5-4512-a827-43e588d5d1ee"
+                },
+                {
+                    "description": "Pad 1 [RGB_G] of R18 on F.Cu",
+                    "pos": {
+                        "x": 167.505,
+                        "y": 106.29
+                    },
+                    "uuid": "97d99c65-b8e9-4de0-ad85-f4b62d65bbd9"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1668 mm)",
+            "items": [
+                {
+                    "description": "Pad 6 [COMP] of U1 on F.Cu",
+                    "pos": {
+                        "x": 144.61,
+                        "y": 117.925
+                    },
+                    "uuid": "1a4a214d-2061-4619-b7c0-31242f4641e8"
+                },
+                {
+                    "description": "Track [PH] on F.Cu, length 0.2745 mm",
+                    "pos": {
+                        "x": 143.3783,
+                        "y": 117.4841
+                    },
+                    "uuid": "feac3b51-e88b-4b88-98a1-783659151a86"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1517 mm)",
+            "items": [
+                {
+                    "description": "Pad 6 [COMP] of U1 on F.Cu",
+                    "pos": {
+                        "x": 144.61,
+                        "y": 117.925
+                    },
+                    "uuid": "1a4a214d-2061-4619-b7c0-31242f4641e8"
+                },
+                {
+                    "description": "Track [PH] on F.Cu, length 2.1617 mm",
+                    "pos": {
+                        "x": 143.3783,
+                        "y": 119.6458
+                    },
+                    "uuid": "ed2949ba-5f6c-49d3-b578-653957a69470"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1536 mm)",
+            "items": [
+                {
+                    "description": "Pad 7 [GND] of U1 on F.Cu",
+                    "pos": {
+                        "x": 144.61,
+                        "y": 116.655
+                    },
+                    "uuid": "0cee3308-3b50-4aaa-9e72-edc792efa845"
+                },
+                {
+                    "description": "Track [PH] on F.Cu, length 0.3008 mm",
+                    "pos": {
+                        "x": 145.629,
+                        "y": 117.29
+                    },
+                    "uuid": "5155631c-8102-4085-bc44-215700cb460f"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1517 mm)",
+            "items": [
+                {
+                    "description": "Pad 7 [GND] of U1 on F.Cu",
+                    "pos": {
+                        "x": 144.61,
+                        "y": 116.655
+                    },
+                    "uuid": "0cee3308-3b50-4aaa-9e72-edc792efa845"
+                },
+                {
+                    "description": "Track [PH] on F.Cu, length 1.6923 mm",
+                    "pos": {
+                        "x": 145.8417,
+                        "y": 117.0773
+                    },
+                    "uuid": "41467e37-8e67-4ecf-9f88-8073dbe51dae"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1738 mm)",
+            "items": [
+                {
+                    "description": "Track [PH] on F.Cu, length 1.7327 mm",
+                    "pos": {
+                        "x": 144.6035,
+                        "y": 120.871
+                    },
+                    "uuid": "5d637fd5-2e9e-48ca-94cb-0003e4fe8b5e"
+                },
+                {
+                    "description": "Pad 5 [FB] of U1 on F.Cu",
+                    "pos": {
+                        "x": 144.61,
+                        "y": 119.195
+                    },
+                    "uuid": "ef9095bf-950e-419f-8852-21dca4fa715a"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1396 mm)",
+            "items": [
+                {
+                    "description": "Track [PH] on F.Cu, length 1.1000 mm",
+                    "pos": {
+                        "x": 143.3783,
+                        "y": 119.6458
+                    },
+                    "uuid": "3b70adbb-5b16-488a-a5a2-efaa2b617376"
+                },
+                {
+                    "description": "Pad 5 [FB] of U1 on F.Cu",
+                    "pos": {
+                        "x": 144.61,
+                        "y": 119.195
+                    },
+                    "uuid": "ef9095bf-950e-419f-8852-21dca4fa715a"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1517 mm)",
+            "items": [
+                {
+                    "description": "Pad 4 [SS] of U1 on F.Cu",
+                    "pos": {
+                        "x": 139.05,
+                        "y": 119.195
+                    },
+                    "uuid": "2d2d8909-917d-4c80-a158-fe3311de7da1"
+                },
+                {
+                    "description": "Track [EN] on F.Cu, length 6.9917 mm",
+                    "pos": {
+                        "x": 140.2817,
+                        "y": 117.925
+                    },
+                    "uuid": "630f9940-cb76-460e-b39b-9f99948d7898"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1600 mm)",
+            "items": [
+                {
+                    "description": "Pad 9 [GND] of U1 on F.Cu",
+                    "pos": {
+                        "x": 141.2275,
+                        "y": 116.515
+                    },
+                    "uuid": "3dea7421-f9dd-424c-a2f4-f2900864096f"
+                },
+                {
+                    "description": "Track [VIN] on F.Cu, length 3.6176 mm",
+                    "pos": {
+                        "x": 140.315,
+                        "y": 113.0291
+                    },
+                    "uuid": "83c47334-b91f-4432-b232-ee81556f16d0"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1683 mm)",
+            "items": [
+                {
+                    "description": "Pad 9 [GND] of U1 on F.Cu",
+                    "pos": {
+                        "x": 141.2275,
+                        "y": 116.515
+                    },
+                    "uuid": "3dea7421-f9dd-424c-a2f4-f2900864096f"
+                },
+                {
+                    "description": "Track [VIN] on F.Cu, length 1.1344 mm",
+                    "pos": {
+                        "x": 139.1723,
+                        "y": 116.655
+                    },
+                    "uuid": "6a8b8c51-b286-430e-a2d2-c209bb053a41"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Items shorting two nets (nets RGB_G and GND)",
+            "items": [
+                {
+                    "description": "Pad 3 [RGB_G] of D3 on F.Cu",
+                    "pos": {
+                        "x": 165.455,
+                        "y": 105.815
+                    },
+                    "uuid": "b3a79a1a-3bc5-4512-a827-43e588d5d1ee"
+                },
+                {
+                    "description": "PTH pad 6 [GND] of J5",
+                    "pos": {
+                        "x": 165.83,
+                        "y": 104.99
+                    },
+                    "uuid": "9aec878a-642e-486b-a033-82ed450de039"
+                }
+            ],
+            "severity": "error",
+            "type": "shorting_items"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint H1",
+                    "pos": {
+                        "x": 172.63,
+                        "y": 85.95
+                    },
+                    "uuid": "3d86123c-738e-59ef-838c-6210d2c5c51c"
+                },
+                {
+                    "description": "Footprint J13",
+                    "pos": {
+                        "x": 172.63,
+                        "y": 112.37
+                    },
+                    "uuid": "508355ff-a877-4450-9780-9f10e089267c"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 10 [SCL_3V3] of J13",
+                    "pos": {
+                        "x": 172.63,
+                        "y": 89.51
+                    },
+                    "uuid": "e8728028-b039-4d00-a8f8-3798412d3c9e"
+                },
+                {
+                    "description": "Footprint H1",
+                    "pos": {
+                        "x": 172.63,
+                        "y": 85.95
+                    },
+                    "uuid": "3d86123c-738e-59ef-838c-6210d2c5c51c"
+                }
+            ],
+            "severity": "error",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint R18",
+                    "pos": {
+                        "x": 168.33,
+                        "y": 106.29
+                    },
+                    "uuid": "44627933-daf1-4ee0-9595-774a152a7dff"
+                },
+                {
+                    "description": "Footprint J5",
+                    "pos": {
+                        "x": 165.83,
+                        "y": 92.29
+                    },
+                    "uuid": "99c48ab0-a177-4aee-82a5-f6b8c39aeae3"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint R19",
+                    "pos": {
+                        "x": 168.33,
+                        "y": 103.79
+                    },
+                    "uuid": "48f7e7ba-9e65-41d2-82ee-51dda92005ac"
+                },
+                {
+                    "description": "Footprint J5",
+                    "pos": {
+                        "x": 165.83,
+                        "y": 92.29
+                    },
+                    "uuid": "99c48ab0-a177-4aee-82a5-f6b8c39aeae3"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint J4",
+                    "pos": {
+                        "x": 163.33,
+                        "y": 136.09
+                    },
+                    "uuid": "70b3bb40-b8a7-42c4-92fa-5fb178881802"
+                },
+                {
+                    "description": "Footprint H2",
+                    "pos": {
+                        "x": 157.39,
+                        "y": 136.75
+                    },
+                    "uuid": "f750bcac-6b2a-5486-8ab1-bdf8f53e3fb4"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 164.83,
+                        "y": 106.29
+                    },
+                    "uuid": "70f8c999-fde1-4ab2-ac7c-e39d9888a868"
+                },
+                {
+                    "description": "Footprint J5",
+                    "pos": {
+                        "x": 165.83,
+                        "y": 92.29
+                    },
+                    "uuid": "99c48ab0-a177-4aee-82a5-f6b8c39aeae3"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "items": [
+                {
+                    "description": "PTH pad 6 [GND] of J5",
+                    "pos": {
+                        "x": 165.83,
+                        "y": 104.99
+                    },
+                    "uuid": "9aec878a-642e-486b-a033-82ed450de039"
+                },
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 164.83,
+                        "y": 106.29
+                    },
+                    "uuid": "70f8c999-fde1-4ab2-ac7c-e39d9888a868"
+                }
+            ],
+            "severity": "error",
+            "type": "pth_inside_courtyard"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint R2",
+                    "pos": {
+                        "x": 140.33,
+                        "y": 128.79
+                    },
+                    "uuid": "8e7f8c61-c07a-4ed6-a41e-4b457514cd8d"
+                },
+                {
+                    "description": "Footprint D2",
+                    "pos": {
+                        "x": 136.83,
+                        "y": 128.79
+                    },
+                    "uuid": "ca8ad778-4484-4141-96be-9d3820600991"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint J1",
+                    "pos": {
+                        "x": 138.83,
+                        "y": 134.29
+                    },
+                    "uuid": "b4c511e4-c6e3-4f7c-9f44-cbb38e48ae82"
+                },
+                {
+                    "description": "Footprint H3",
+                    "pos": {
+                        "x": 129.45,
+                        "y": 136.75
+                    },
+                    "uuid": "d4af700b-54a4-5058-99c8-c0fc2278d353"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.4250 mm)",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 175.17,
+                        "y": 139.29
+                    },
+                    "uuid": "182c74e9-db7b-4931-be82-b0bb208cc209"
+                },
+                {
+                    "description": "Pad 1 [GND] of J4 on F.Cu",
+                    "pos": {
+                        "x": 164.83,
+                        "y": 138.09
+                    },
+                    "uuid": "d34bbba4-3f3f-471c-9771-b3887398764b"
+                }
+            ],
+            "severity": "error",
+            "type": "copper_edge_clearance"
+        },
+        {
+            "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.4250 mm)",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 175.17,
+                        "y": 139.29
+                    },
+                    "uuid": "182c74e9-db7b-4931-be82-b0bb208cc209"
+                },
+                {
+                    "description": "Pad 2 [3V3_UNO] of J4 on F.Cu",
+                    "pos": {
+                        "x": 163.83,
+                        "y": 138.09
+                    },
+                    "uuid": "68a5efa5-461d-4c51-a579-c59db0d77724"
+                }
+            ],
+            "severity": "error",
+            "type": "copper_edge_clearance"
+        },
+        {
+            "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.4250 mm)",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 175.17,
+                        "y": 139.29
+                    },
+                    "uuid": "182c74e9-db7b-4931-be82-b0bb208cc209"
+                },
+                {
+                    "description": "Pad 3 [SDA_3V3] of J4 on F.Cu",
+                    "pos": {
+                        "x": 162.83,
+                        "y": 138.09
+                    },
+                    "uuid": "07f8dcc2-e9fc-4cb7-a98e-59485cb737f7"
+                }
+            ],
+            "severity": "error",
+            "type": "copper_edge_clearance"
+        },
+        {
+            "description": "Board edge clearance violation (board setup constraints edge clearance 0.5000 mm; actual 0.4250 mm)",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 175.17,
+                        "y": 139.29
+                    },
+                    "uuid": "182c74e9-db7b-4931-be82-b0bb208cc209"
+                },
+                {
+                    "description": "Pad 4 [SCL_3V3] of J4 on F.Cu",
+                    "pos": {
+                        "x": 161.83,
+                        "y": 138.09
+                    },
+                    "uuid": "f5cc839c-608e-44f1-b1c7-1ee71216002a"
+                }
+            ],
+            "severity": "error",
+            "type": "copper_edge_clearance"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Pad 3 [RGB_G] of D3 on F.Cu",
+                    "pos": {
+                        "x": 165.455,
+                        "y": 105.815
+                    },
+                    "uuid": "b3a79a1a-3bc5-4512-a827-43e588d5d1ee"
+                },
+                {
+                    "description": "PTH pad 6 [GND] of J5",
+                    "pos": {
+                        "x": 165.83,
+                        "y": 104.99
+                    },
+                    "uuid": "9aec878a-642e-486b-a033-82ed450de039"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        }
+    ]
+}

@@ -259,6 +259,13 @@ def main() -> int:
         # --user_data_path keeps freerouting.json/log out of $HOME.
         fr_args += ["--gui.enabled=false", "-da",
                     f"--user_data_path={workdir / '.freerouting'}"]
+    elif not os.environ.get("DISPLAY") and shutil.which("xvfb-run"):
+        # 1.9.0's main() calls Toolkit.getScreenSize() even in -de/-do batch
+        # mode and dies with HeadlessException without a display. xvfb-run
+        # gives it a virtual framebuffer — nothing renders anywhere; measured
+        # to route a real 4-layer DSN to completion. The container ships
+        # xvfb for exactly this.
+        fr_args = ["xvfb-run", "-a"] + fr_args
     log("+", " ".join(fr_args))
     proc = subprocess.run(fr_args, stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT, text=True)

@@ -195,7 +195,7 @@
 	(footprint "Fiducial_pcb-agent"
 		(layer "F.Cu")
 		(uuid "02c45337-97ad-4409-a6d7-3e514ed926e2")
-		(at 168.4754 81.8927)
+		(at 167.78 81.34)
 		(property "Reference" "FID3"
 			(at -0.001254 -2.39625 0)
 			(layer "F.SilkS")

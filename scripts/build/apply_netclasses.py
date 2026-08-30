@@ -121,7 +121,10 @@ def main() -> int:
                 "classes": [{
                     "name": "Default",
                     "track_width": 0.25,
-                    "clearance": 0.15,
+                    # 0.2, matching KiCad's DRC default: a smaller netclass
+                    # clearance reaches the DSN, freerouting routes to it,
+                    # and every squeeze becomes a DRC clearance violation.
+                    "clearance": 0.2,
                     "via_diameter": 0.6,
                     "via_drill": 0.3,
                 }],
@@ -159,7 +162,7 @@ def main() -> int:
         # power class here rather than assuming an upstream tool did.
         cls = {
             "name": class_name,
-            "clearance": 0.15,
+            "clearance": 0.2,
             "via_diameter": 0.6,
             "via_drill": 0.3,
         }

@@ -33,6 +33,11 @@ patterns = ["VIN", "VIN_RAW", "VIN_PROT", "5V", "GND"]
 # 0.2 mm default.
 min_width_mm = 0.30
 class_width_mm = 0.30
+# GND and 5V are plane-fed (In1/In2): their surface copper is pad
+# escapes into vias — measured all <= 2.5 mm. Chains longer than
+# stub_max_mm still fail.
+plane_fed = ["GND", "5V", "VIN_RAW"]
+stub_max_mm = 3.0
 
 [silkscreen]
 margin_mm = 0.0
@@ -514,28 +519,28 @@ rotation = 0
 [[floorplan.place]]
 ref = "J5"
 x = 44.0
-y = 47.0
+y = 59.5
 rotation = 0
 note = "5V IO header (DNP)"
 [[floorplan.place]]
 ref = "D3"
-x = 42.0
-y = 55.5
+x = 43.0
+y = 33.0
 rotation = 0
 [[floorplan.place]]
 ref = "R17"
-x = 45.5
-y = 58.0
+x = 46.5
+y = 30.5
 rotation = 0
 [[floorplan.place]]
 ref = "R18"
-x = 45.5
-y = 55.5
+x = 46.5
+y = 33.0
 rotation = 0
 [[floorplan.place]]
 ref = "R19"
-x = 45.5
-y = 53.0
+x = 46.5
+y = 35.5
 rotation = 0
 [[floorplan.place]]
 ref = "J3"
@@ -562,6 +567,14 @@ layer = "In2_Cu"
 clearance_mm = 0.25
 min_thickness_mm = 0.15
 [[zones.pour]]
+net = "VIN_RAW"
+layer = "F_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+priority = 3
+bbox = [4.0, 2.0, 18.0, 14.0]
+
+[[zones.pour]]
 net = "VIN"
 layer = "F_Cu"
 clearance_mm = 0.25
@@ -582,18 +595,37 @@ min_thickness_mm = 0.15
 priority = 1
 
 [[fanout.thermal_vias]]
+ref = "J3"
+pad = "MP"
+net = "GND"
+via_size_mm = 0.6
+via_drill_mm = 0.3
+
+[[fanout.thermal_vias]]
+ref = "J4"
+pad = "MP"
+net = "GND"
+via_size_mm = 0.6
+via_drill_mm = 0.3
+
+[[fanout.thermal_vias]]
 ref = "U1"
 pad = "9"
 net = "GND"
 via_size_mm = 0.6
 via_drill_mm = 0.3
 
+[[route.pours]]
+net = "GND"
+# orphan pour islands touch nothing and read as "missing connection"
+island_removal_layers = ["F_Cu", "B_Cu"]
+
 [route]
 via_size_mm = 0.6
 via_drill_mm = 0.3
 track_width_mm = 0.25
 power_track_width_mm = 0.30
-clearance_mm = 0.15
+clearance_mm = 0.2
 
 [[silk.text]]
 text = "unoq-power-shield rev1"

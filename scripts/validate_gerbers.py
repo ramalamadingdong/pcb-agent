@@ -777,14 +777,22 @@ def check_keepouts(pkg: FabPackage, cfg: dict, rep: Report) -> None:
     for ko in keepouts:
         name = ko.get("name", "keepout")
         layers = ko.get("layers") or list(pkg.copper)
+        # Test the strict INTERIOR: a pour correctly carved around the
+        # keepout leaves polygon vertices exactly ON the boundary line,
+        # and flagging those would fail every fill that did the right
+        # thing. Copper 1 um inside still fails.
+        eps = 1e-3
+        x1, x2 = sorted((float(ko["x1"]), float(ko["x2"])))
+        y1, y2 = sorted((float(ko["y1"]), float(ko["y2"])))
+        inner = {"x1": x1 + eps, "y1": y1 + eps, "x2": x2 - eps, "y2": y2 - eps}
         hits: dict[str, int] = {}
         for lname in layers:
             layer = pkg.copper.get(lname)
             if layer is None:
                 continue
-            n = sum(1 for d in layer.draws if seg_hits_rect(d, ko))
-            n += sum(1 for f in layer.flashes if in_rect(f.x, f.y, ko))
-            n += sum(1 for x, y in layer.region_points if in_rect(x, y, ko))
+            n = sum(1 for d in layer.draws if seg_hits_rect(d, inner))
+            n += sum(1 for f in layer.flashes if in_rect(f.x, f.y, inner))
+            n += sum(1 for x, y in layer.region_points if in_rect(x, y, inner))
             if n:
                 hits[lname] = n
         if hits:

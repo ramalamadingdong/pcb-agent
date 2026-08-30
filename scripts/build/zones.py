@@ -260,7 +260,14 @@ def main() -> int:
         # Never add --save-board to a kicad-cli call here either — it wipes
         # the net table, and the router afterwards reports "nets to route: 0"
         # and does nothing, silently.
-        run_kct(["zones", "fill", str(board), "-o", str(board)])
+        # kct refuses -o pointing at the input (SameFileError): fill to a
+        # sibling temp file and swap it in.
+        tmp = board.with_suffix(".fill.kicad_pcb")
+        tmp.unlink(missing_ok=True)
+        run_kct(["zones", "fill", str(board), "-o", str(tmp)])
+        if not tmp.exists() or tmp.stat().st_size == 0:
+            _lib.fail(f"kct zones fill wrote nothing at {tmp}")
+        tmp.replace(board)
         _lib.assert_net_table(board)
         filled = True
 
