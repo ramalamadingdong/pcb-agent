@@ -1,0 +1,14 @@
+# Transient build/export output. Ordered packages are archived elsewhere
+# (fab_rev*_ordered/) and committed byte-for-byte — see CLAUDE.md.
+build/
+fab/
+
+# Fetched tools (make setup re-fetches, checksum-verified)
+tools/*.jar
+
+# Residue from the flattened export this repo was restored from
+mnt/
+
+__pycache__/
+*.pyc
+.venv/

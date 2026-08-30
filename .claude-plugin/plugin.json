@@ -1,0 +1,8 @@
+{
+  "name": "pcb-agent",
+  "version": "0.1.0",
+  "description": "Design a PCB end to end with an agent: CSV source of truth, idempotent build passes, and checks that run on the fab output.",
+  "author": { "name": "Rami Mouro", "url": "https://mouro.ai" },
+  "license": "MIT",
+  "keywords": ["kicad", "pcb", "hardware", "gerber", "freerouting"]
+}

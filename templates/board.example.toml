@@ -1,0 +1,69 @@
+# board.toml — what this board is supposed to be.
+# Every rule you add here is one you never have to remember again.
+# Anything you catch by hand, add as a rule. That is the whole point.
+
+[board]
+name = "my-board"
+
+[layers]
+# Inner layers you declared solid planes. Any track on these is a FAIL:
+# a signal here breaks the reference plane for everything above it.
+planes = ["In1_Cu", "In2_Cu"]
+
+[nets.power]
+# The generated netclass patterns (VCC*, VDD*, +*V) match none of the usual
+# names, so power traces come out at default width and nothing errors.
+patterns = ["VBUS", "VSYS", "VBAT", "+3V3", "+5V", "GND", "VDD*", "VCC*"]
+min_width_mm = 0.30
+
+[silkscreen]
+# Fab clips anything past the outline, so it just prints bare.
+margin_mm = 0.0
+
+[mounting_holes]
+# Not netlist objects — nothing emits them and nothing checks them.
+count = 4
+diameter_mm = 3.2
+tolerance_mm = 0.05
+
+[fiducials]
+count = 3
+min_collinear_deviation_mm = 1.0
+
+# Keepouts ban pours, tracks and vias — but not pads. Declare them here and
+# this checks all layers, pads included.
+# [[keepouts]]
+# name = "antenna"
+# x1 = 100.0
+# y1 = 80.0
+# x2 = 112.0
+# y2 = 88.0
+# layers = ["F_Cu", "In1_Cu", "In2_Cu", "B_Cu"]
+
+# [[thermal_vias]]
+# name = "module_exposed_pad"
+# x1 = 120.0
+# y1 = 90.0
+# x2 = 130.0
+# y2 = 98.0
+# min_count = 9
+
+# [[rf_budget]]
+# net = "ANT"
+# max_length_mm = 25.0
+
+[[keepouts]]
+name = "antenna"
+x1 = 50.0
+y1 = 30.0
+x2 = 60.0
+y2 = 40.0
+layers = ["F_Cu", "In1_Cu", "In2_Cu"]
+
+[[thermal_vias]]
+name = "module_pad"
+x1 = 24.0
+y1 = 24.0
+x2 = 30.0
+y2 = 30.0
+min_count = 9
