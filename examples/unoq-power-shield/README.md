@@ -1,10 +1,21 @@
 # UNO Q power & I/O demo shield
 
-The example board for this repo — the known-good design a first-time user
-builds **before trusting the pipeline with their own board**. If this
-builds, routes, checks, and comes back from the fab working, the pipeline
-works. That is all it proves: it says nothing about whether any *other*
-design is right, and it is not a product.
+**Status: UNBUILT.** No physical board of this design has been fabricated
+or powered on yet. Until one has, treat this as a reference for exercising
+the pipeline, not a verified design.
+
+**The stacking headers ship DNP** — the assembled board cannot plug into
+anything until you solder a stacking header set into the four plated hole
+strips. Any classic Arduino R3 stacking kit fits: SparkFun PRT-11417 or
+Adafruit #85, about **$2**. This is deliberate: assembly houses don't stock
+stacking headers, and a flush-soldered normal header would make the shield
+unstackable.
+
+The example board for this repo — the design a first-time user builds
+**before trusting the pipeline with their own board**. If this builds,
+routes, checks, and comes back from the fab working, the pipeline works.
+That is all it proves: it says nothing about whether any *other* design is
+right, and it is not a product.
 
 ## What it is
 
@@ -22,7 +33,11 @@ A shield for the [Arduino UNO Q](https://docs.arduino.cc/hardware/uno-q)
   headers and 5 V peripherals, on D2/D4/D7/D8. **The UNO Q's headers are
   3.3 V logic, not the classic UNO's 5 V** — wiring 5 V gear straight in is
   the most common way this board gets damaged, and this circuit is the fix.
-  Good to ~300 kHz; not for NeoPixels or fast SPI.
+  **Signalling limit: ~300 kHz.** The 10 k pull-ups against ~30 pF of load
+  give ~0.3 µs rise times: fine for GPIO, buttons, slow UART, and 100 kHz
+  I²C-style traffic; **not for SPI above ~300 kHz and not for NeoPixels**
+  (WS2812 timing needs edges these channels cannot produce). That is a
+  documented property of the classic BSS138 shifter, not a defect.
 - **Qwiic passthrough** (2× JST-SH, daisy-chain) on the same I²C bus.
 - **RGB status LED** on ~D9/~D10/~D11, active-low, for sketches to drive.
 

@@ -62,8 +62,8 @@ VIN,C2,1,~,"4.7uF/50V X7R (C51205)"
 GND,C2,2,~,
 VIN,C3,1,~,"100nF HF bypass (C14663; ds: small hf cap alongside bulk)"
 GND,C3,2,~,
-PH,D1,2,K,"SS34 cathode to PH - catch diode for the non-synchronous buck (SS34.pdf: color band = cathode; 40 V > 24 V in, Vf 0.55 V at 3 A)"
-GND,D1,1,A,
+PH,D1,1,K,"SS34 cathode to PH - catch diode for the non-synchronous buck (SS34.pdf: color band = cathode; KiCad D_SMA pad 1 = cathode; 40 V > 24 V in, Vf 0.55 V at 3 A)"
+GND,D1,2,A,
 PH,L1,1,~,"SWPA6045S100MT 10uH (SWPA-series-Sunlord.pdf 6045S100MT row: Isat 3.2 A > 2.43 A worst-case peak, Irms 2.45 A, DCR 62 mOhm)"
 5V,L1,2,~,
 5V,C8,1,~,"22uF/25V X5R output x2 (CL31A226KAHNNNE C12891 Basic; ds 8.2.2.6: >=2.55uF for 25 kHz crossover, ripple 5 mV)"

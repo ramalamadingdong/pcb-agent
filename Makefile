@@ -3,8 +3,20 @@
 # ever. `make setup` builds the image and fetches the Freerouting jar for
 # native runs. Inside the container PCB_AGENT_CONTAINER is set, which
 # disables the redirection — no docker-in-docker.
+#
+# Point BOARD_DIR at the directory holding board.toml + netlist.csv.
+# The example board is the default — it is what a first-time user builds.
 
 IMAGE ?= pcb-agent
+BOARD_DIR ?= examples/unoq-power-shield
+NAME ?= $(notdir $(abspath $(BOARD_DIR)))
+CONFIG ?= $(BOARD_DIR)/board.toml
+NETLIST ?= $(BOARD_DIR)/netlist.csv
+SCH ?= $(BOARD_DIR)/$(NAME).kicad_sch
+PCB ?= $(BOARD_DIR)/$(NAME).kicad_pcb
+SNAPSHOT ?= $(BOARD_DIR)/pre_route.kicad_pcb
+ROUNDS ?= 4
+PASSES ?= 100
 
 # The pinned toolchain. These are the source of truth: setup passes them to
 # docker build and the jar fetcher. The Dockerfile carries matching defaults
@@ -18,8 +30,9 @@ ifeq ($(PCB_AGENT_CONTAINER),)
 HAVE_IMAGE := $(shell docker image inspect $(IMAGE) >/dev/null 2>&1 && echo yes)
 endif
 RUN := $(if $(HAVE_IMAGE),./run.sh )
+P := python3 scripts/build
 
-.PHONY: doctor build route check clean setup
+.PHONY: doctor build route export check clean setup
 
 setup:
 	docker build -t $(IMAGE) \
@@ -34,19 +47,39 @@ setup:
 doctor:
 	@$(RUN)python3 scripts/doctor.py
 
-check:
-	@$(RUN)python3 scripts/validate_gerbers.py ./fab/ -c board.toml
-
-# --- these need the build passes dropped into scripts/build/ ---
-# See scripts/build/CONTRACT.md for the interface each one must satisfy.
-# When they land, wire them exactly like doctor/check above — prefix with
-# $(RUN) and they run in the container when it exists.
-
+# netlist.csv -> schematic -> board -> placement -> zones -> marks -> silk,
+# ending in the pre-route snapshot. Order is load-bearing: mounting holes
+# before the placement loop (their courtyards are obstacles), fiducials
+# before the pour refill (the pour must honour their clearance ring),
+# keepouts before silk (silk avoids the declared rectangles).
 build:
-	@echo "Build passes not installed. See scripts/build/CONTRACT.md" && exit 1
+	$(RUN)$(P)/make_libs.py --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/generate_schematic.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/create_pcb.py --schematic $(SCH) --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/apply_netclasses.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/floorplan.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/add_mounting_holes.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/place.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --rounds $(ROUNDS)
+	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/fanout.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/add_fiducials.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/add_keepouts.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/silk_finish.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --fill-only
+	cp $(PCB) $(SNAPSHOT)
+	@echo "snapshot: $(SNAPSHOT)"
 
+# Snapshot -> Freerouting (xvfb, -mt 1, foreground) -> completion stack ->
+# DRC x5 (compare violation kinds, not counts). Re-runnable without paying
+# for a rebuild: it always starts from the snapshot.
 route:
-	@echo "Route script not installed. See scripts/build/CONTRACT.md" && exit 1
+	$(RUN)$(P)/route.py --board $(PCB) --snapshot $(SNAPSHOT) --netlist $(NETLIST) --config $(CONFIG) --passes $(PASSES)
+
+export:
+	$(RUN)$(P)/export_fab.py --board $(PCB) --config $(CONFIG)
+
+check:
+	@$(RUN)python3 scripts/validate_gerbers.py $(BOARD_DIR)/fab -c $(CONFIG)
 
 clean:
-	rm -rf fab/ build/
+	rm -rf $(BOARD_DIR)/fab $(BOARD_DIR)/build

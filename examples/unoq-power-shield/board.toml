@@ -1,53 +1,61 @@
 # board.toml — UNO Q power & I/O demo shield (rev 1)
-# Every rule here has a physical reason on THIS board — see rev-1-plan.md
-# ("Board rules this design exercises"). Coordinates are the UNO Q fab
-# frame: portrait, origin bottom-left of the top view, X across 53.34 mm,
-# Y along 68.58 mm, antenna/USB-C edge at Y = 68.58.
+# Checker rules AND build-pass parameters. ONE coordinate frame everywhere:
+# origin at the board's bottom-left corner, X right, Y UP — the frame of
+# the UNO Q drill data these numbers were extracted from, of the exported
+# gerbers (export_fab pins the aux origin to that corner), and of every
+# rectangle scripts/validate_gerbers.py checks. Portrait: X across
+# 53.34 mm, Y along 68.58 mm, antenna/USB-C edge at the top (Y = 68.58).
 
 [board]
 name = "unoq-power-shield"
 
 [frame]
-# Ties the coordinate frame every rectangle below assumes to the shield's
-# actual export. The board is portrait: X across 53.34 mm, Y along
-# 68.58 mm, origin bottom-left (the UNO Q fab frame — rev-1-plan.md).
-# Without this the antenna keepout could "pass" by inspecting empty space.
 outline_bbox = [0.0, 0.0, 53.34, 68.58]
 tolerance_mm = 0.5
 
+# ---------------------------------------------------------------- checker
+
 [layers]
-# L2 = solid GND under the switcher, L3 = power plane. Any track on these
-# breaks the return path the buck's ripple current depends on.
+# In1 = solid GND under the switcher, In2 = 5V power plane. Tracks on
+# either is a FAIL; pours are what they are for.
 planes = ["In1_Cu", "In2_Cu"]
 
 [nets.power]
-# VIN carries up to 4 A worst case (IPC-2221 math in the plan: 2.0 mm
-# design width). 0.8 mm is the checker FLOOR — it exists to catch the
-# generated-netclass failure where power routes at the 0.2 mm default.
-patterns = ["VIN", "VIN_PROT", "5V", "+5V", "GND", "3V3", "+3V3"]
-min_width_mm = 0.8
+patterns = ["VIN", "VIN_RAW", "VIN_PROT", "5V", "GND"]
+# 0.30, not the IPC-2221 2.0 mm the 4 A worst case implies: the power
+# netclass must be able to ENTER the narrowest pad on its nets, and the
+# INA226's sense pins are 0.3 mm (the rev-D lesson: a 0.5 mm class left
+# 24 nets unrouted because freerouting refuses a track wider than the
+# pad). Surface power tracks are short hops; the real current path is
+# the In2 plane plus the F.Cu VIN pours below ([[zones.pour]]), whose
+# cross-section satisfies the IPC math. The floor still catches the
+# classic failure this rule exists for: power routed at a generated
+# 0.2 mm default.
+min_width_mm = 0.30
+class_width_mm = 0.30
 
 [silkscreen]
-# JLC clips silk past the outline; boards print bare.
 margin_mm = 0.0
 
 [mounting_holes]
-# Fixed by the UNO form factor — drill file T08 block, not ours to choose:
-# (50.80, 53.34), (35.56, 2.54), (7.62, 2.54), (2.54, 54.61).
+# Fixed by the UNO form factor — UNO Q drill file T08 block, not ours to
+# choose. Board frame, bottom-left origin, Y up.
 count = 4
 diameter_mm = 3.2
 tolerance_mm = 0.05
+positions = [[50.80, 53.34], [35.56, 2.54], [7.62, 2.54], [2.54, 54.61]]
 
 [fiducials]
-# JLCPCB assembly. Must carry X2 AperFunction tags — a previous board
-# shipped bare copper dots the checker could not see (rev D2 lesson).
+# JLCPCB assembly. The pass stamps the X2 AperFunction fabrication
+# attribute — rev D2 shipped bare copper dots the checker couldn't see.
 count = 3
 min_collinear_deviation_mm = 1.0
+positions = [[31.0, 36.0], [8.0, 33.0], [46.0, 58.0]]
 
-# The most instructive rule on the board: the UNO Q's Wi-Fi PCB antenna
-# sits directly under this region (measured from Arduino's own top.art:
-# copper spans X 0.76-22.1, Y 63.9-68.07; margin added). Copper here —
-# any layer, pads included — detunes the radio of the board underneath.
+# The UNO Q's Wi-Fi PCB antenna sits directly under this region (measured
+# from Arduino's own top.art: copper spans X 0.76-22.1, Y 63.9-68.07;
+# margin added). Copper here — any layer, pads included — detunes the
+# radio of the board underneath.
 [[keepouts]]
 name = "unoq_wifi_antenna"
 x1 = 0.0
@@ -56,14 +64,558 @@ x2 = 26.0
 y2 = 68.58
 layers = ["F_Cu", "In1_Cu", "In2_Cu", "B_Cu"]
 
-# The buck's PowerPAD needs stitched vias to the GND plane — it is the
-# only path that keeps U1 within ~35 degC of ambient at full load.
-# x1/y1/x2/y2 = U1's exposed-pad region: FILL IN AFTER FLOORPLAN pins
-# U1's position (gate in rev-1-plan.md blocks ordering until then).
-# [[thermal_vias]]
-# name = "buck_powerpad"
-# x1 = 0.0
-# y1 = 0.0
-# x2 = 0.0
-# y2 = 0.0
-# min_count = 6
+# The buck's PowerPAD vias — the only path that keeps U1 within ~35 degC
+# of ambient at full load. Region = U1's exposed pad at its floorplan
+# position (U1 at (20,22), HSOIC-8 EP ~2.4x3.1 mm).
+[[thermal_vias]]
+name = "buck_powerpad"
+x1 = 18.4
+y1 = 20.0
+x2 = 21.6
+y2 = 24.0
+min_count = 4
+
+# ------------------------------------------------------------ build: libs
+
+[build]
+width_mm = 53.34
+height_mm = 68.58
+layers = 4
+title = "unoq-power-shield"
+revision = "1"
+
+[project]
+footprint_lib = "unoq_power_shield.pretty"
+
+[libs]
+name = "unoq_power_shield"
+out_dir = "."
+vendor_dir = "footprints.pretty"
+extra_footprints = ["MountingHole_3.2mm"]
+
+[[libs.symbols]]
+name = "TPS54331"
+reference = "U"
+footprint = "HSOIC-8-1EP"
+description = "TI TPS54331 3A 28V buck, SO-8 PowerPAD (TPS54331DDAR.pdf sec.5)"
+datasheet = "docs/datasheets/TPS54331DDAR.pdf"
+pins = [
+  { number = "1", name = "BOOT", type = "input" },
+  { number = "2", name = "VIN", type = "power_in" },
+  { number = "3", name = "EN", type = "input" },
+  { number = "4", name = "SS", type = "input" },
+  { number = "5", name = "VSENSE", type = "input" },
+  { number = "6", name = "COMP", type = "output" },
+  { number = "7", name = "GND", type = "power_in" },
+  { number = "8", name = "PH", type = "output" },
+  { number = "9", name = "PAD", type = "power_in" },
+]
+
+[[libs.symbols]]
+name = "INA226"
+reference = "U"
+footprint = "VSSOP-10"
+description = "TI INA226 36V current/power monitor (INA226AIDGSR.pdf Table 4-1)"
+datasheet = "docs/datasheets/INA226AIDGSR.pdf"
+pins = [
+  { number = "1", name = "A1", type = "input" },
+  { number = "2", name = "A0", type = "input" },
+  { number = "3", name = "ALERT", type = "open_collector" },
+  { number = "4", name = "SDA", type = "bidirectional" },
+  { number = "5", name = "SCL", type = "input" },
+  { number = "6", name = "VS", type = "power_in" },
+  { number = "7", name = "GND", type = "power_in" },
+  { number = "8", name = "VBUS", type = "input" },
+  { number = "9", name = "IN-", type = "input" },
+  { number = "10", name = "IN+", type = "input" },
+]
+
+[[libs.symbols]]
+name = "AO4407A"
+reference = "Q"
+footprint = "SOIC-8"
+description = "AOS AO4407A -30V P-FET (AO4407A.pdf p.1: 1-3 S, 4 G, 5-8 D)"
+datasheet = "docs/datasheets/AO4407A.pdf"
+pins = [
+  { number = "1", name = "S", type = "passive" },
+  { number = "2", name = "S", type = "passive" },
+  { number = "3", name = "S", type = "passive" },
+  { number = "4", name = "G", type = "input" },
+  { number = "5", name = "D", type = "passive" },
+  { number = "6", name = "D", type = "passive" },
+  { number = "7", name = "D", type = "passive" },
+  { number = "8", name = "D", type = "passive" },
+]
+
+[[libs.symbols]]
+name = "XL1615RGBC"
+reference = "D"
+footprint = "XL1615RGBC"
+description = "XINGLIGHT XL-1615RGBC-RF common-anode RGB LED (ds p.8: 1 R-K, 2 A, 3 G-K, 4 B-K)"
+datasheet = "docs/datasheets/XL-1615RGBC-RF.pdf"
+pins = [
+  { number = "1", name = "RK", type = "passive" },
+  { number = "2", name = "A", type = "passive" },
+  { number = "3", name = "GK", type = "passive" },
+  { number = "4", name = "BK", type = "passive" },
+]
+
+# ----------------------------------------------------------- build: parts
+
+[[part_rules]]
+prefix = "R"
+symbol = "Device:R"
+footprint = "Resistor_SMD:R_0603_1608Metric"
+
+[[part_rules]]
+prefix = "C"
+symbol = "Device:C"
+footprint = "Capacitor_SMD:C_0603_1608Metric"
+
+[parts.R1]
+footprint = "Resistor_SMD:R_2512_6332Metric"
+value = "10mR 3W"
+[parts.C1]
+footprint = "Capacitor_SMD:C_1206_3216Metric"
+value = "4.7uF 50V"
+[parts.C2]
+footprint = "Capacitor_SMD:C_1206_3216Metric"
+value = "4.7uF 50V"
+[parts.C8]
+footprint = "Capacitor_SMD:C_1206_3216Metric"
+value = "22uF 25V"
+[parts.C9]
+footprint = "Capacitor_SMD:C_1206_3216Metric"
+value = "22uF 25V"
+
+[parts.U1]
+symbol = "unoq_power_shield:TPS54331"
+footprint = "Package_SO:HSOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.1mm"
+value = "TPS54331DDAR"
+[parts.U2]
+symbol = "unoq_power_shield:INA226"
+footprint = "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+value = "INA226AIDGSR"
+[parts.Q1]
+symbol = "Transistor_FET:BSS138"
+footprint = "Package_TO_SOT_SMD:SOT-23"
+value = "BSS138LT1G"
+[parts.Q2]
+symbol = "Transistor_FET:BSS138"
+footprint = "Package_TO_SOT_SMD:SOT-23"
+value = "BSS138LT1G"
+[parts.Q3]
+symbol = "Transistor_FET:BSS138"
+footprint = "Package_TO_SOT_SMD:SOT-23"
+value = "BSS138LT1G"
+[parts.Q4]
+symbol = "Transistor_FET:BSS138"
+footprint = "Package_TO_SOT_SMD:SOT-23"
+value = "BSS138LT1G"
+[parts.Q5]
+symbol = "unoq_power_shield:AO4407A"
+footprint = "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+value = "AO4407A"
+[parts.D1]
+symbol = "Device:D_Schottky"
+footprint = "Diode_SMD:D_SMA"
+value = "SS34"
+[parts.D2]
+symbol = "Device:D_Zener"
+footprint = "Diode_SMD:D_SOD-123"
+value = "BZT52C12"
+[parts.D3]
+symbol = "unoq_power_shield:XL1615RGBC"
+footprint = "unoq_power_shield:XL1615RGBC"
+value = "XL-1615RGBC-RF"
+[parts.L1]
+symbol = "Device:L"
+footprint = "unoq_power_shield:SWPA6045S"
+value = "10uH"
+[parts.J1]
+symbol = "Connector:Screw_Terminal_01x02"
+footprint = "unoq_power_shield:KF301_5.0_2P"
+value = "VIN 7-24V"
+[parts.J2]
+symbol = "Connector:Screw_Terminal_01x02"
+footprint = "unoq_power_shield:KF301_5.0_2P"
+value = "5V OUT"
+[parts.J3]
+symbol = "Connector_Generic_MountingPin:Conn_01x04_MountingPin"
+footprint = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+value = "Qwiic"
+[parts.J4]
+symbol = "Connector_Generic_MountingPin:Conn_01x04_MountingPin"
+footprint = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+value = "Qwiic"
+[parts.J5]
+symbol = "Connector_Generic:Conn_01x06"
+footprint = "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+value = "5V IO"
+dnp = true
+[parts.J10]
+symbol = "Connector_Generic:Conn_01x08"
+footprint = "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical"
+value = "UNO PWR"
+dnp = true
+[parts.J11]
+symbol = "Connector_Generic:Conn_01x06"
+footprint = "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+value = "UNO ANALOG"
+dnp = true
+[parts.J12]
+symbol = "Connector_Generic:Conn_01x08"
+footprint = "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical"
+value = "UNO D0-D7"
+dnp = true
+[parts.J13]
+symbol = "Connector_Generic:Conn_01x10"
+footprint = "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical"
+value = "UNO D8-SCL"
+dnp = true
+
+# ------------------------------------------------------- build: schematic
+
+[schematic]
+title = "UNO Q power & I/O demo shield"
+revision = "1"
+featured_refs = ["U1", "U2"]
+pwr_flag_nets = ["GND", "VIN_RAW", "VIN_PROT", "VIN", "5V", "3V3_UNO", "5V_USB"]
+
+# ------------------------------------------------------- build: floorplan
+# Headers and holes are the UNO pattern — exact drill-file coordinates,
+# not ours to choose. Everything else is hand-placed and locked; the
+# placement loop only repairs and scores. Board frame, bottom-left, Y-up.
+# Header strips: PinHeader pin1 at the given point, pins run toward -Y
+# at rot 0 and +Y at rot 180.
+
+[[floorplan.place]]
+ref = "J10"
+x = 2.54
+y = 40.64
+rotation = 0
+note = "power strip: BOOT(40.64) down to VIN(22.86) - drill T04"
+[[floorplan.place]]
+ref = "J11"
+x = 2.54
+y = 17.78
+rotation = 0
+note = "analog strip: A0 down to A5(5.08)"
+[[floorplan.place]]
+ref = "J12"
+x = 50.80
+y = 5.08
+rotation = 180
+note = "digital low: D0(5.08) up to D7(22.86)"
+[[floorplan.place]]
+ref = "J13"
+x = 50.80
+y = 26.92
+rotation = 180
+note = "digital high: D8(26.92) up to D21(49.78)"
+
+[[floorplan.place]]
+ref = "J1"
+x = 9.0
+y = 5.0
+rotation = 180
+note = "VIN screw terminal, wire entry at the bottom edge"
+[[floorplan.place]]
+ref = "J2"
+x = 25.0
+y = 5.0
+rotation = 180
+[[floorplan.place]]
+ref = "Q5"
+x = 7.0
+y = 12.0
+rotation = 0
+note = "reverse-polarity P-FET, first thing after J1"
+[[floorplan.place]]
+ref = "R2"
+x = 12.0
+y = 10.0
+rotation = 0
+[[floorplan.place]]
+ref = "D2"
+x = 12.0
+y = 14.0
+rotation = 0
+[[floorplan.place]]
+ref = "R1"
+x = 7.0
+y = 20.0
+rotation = 90
+note = "shunt directly below U2 - kelvin sense traces stay a few mm"
+[[floorplan.place]]
+ref = "U2"
+x = 7.0
+y = 27.0
+rotation = 0
+note = "INA226 right above the shunt; J10 VIN pin lands at (2.54, 22.86) beside it"
+[[floorplan.place]]
+ref = "C10"
+x = 11.5
+y = 30.0
+rotation = 0
+[[floorplan.place]]
+ref = "R16"
+x = 11.5
+y = 24.0
+rotation = 0
+[[floorplan.place]]
+ref = "U1"
+x = 20.0
+y = 22.0
+rotation = 0
+note = "buck; PowerPAD region drives [[thermal_vias]]"
+[[floorplan.place]]
+ref = "C1"
+x = 15.0
+y = 27.5
+rotation = 0
+[[floorplan.place]]
+ref = "C2"
+x = 19.0
+y = 27.5
+rotation = 0
+[[floorplan.place]]
+ref = "C3"
+x = 23.0
+y = 27.5
+rotation = 0
+[[floorplan.place]]
+ref = "C4"
+x = 15.0
+y = 17.0
+rotation = 0
+note = "boot cap by BOOT/PH corner"
+[[floorplan.place]]
+ref = "D1"
+x = 26.0
+y = 17.0
+rotation = 0
+note = "catch diode tight to PH and GND"
+[[floorplan.place]]
+ref = "L1"
+x = 32.0
+y = 22.0
+rotation = 0
+[[floorplan.place]]
+ref = "C8"
+x = 37.5
+y = 18.0
+rotation = 90
+[[floorplan.place]]
+ref = "C9"
+x = 37.5
+y = 26.0
+rotation = 90
+[[floorplan.place]]
+ref = "R5"
+x = 27.0
+y = 29.0
+rotation = 0
+[[floorplan.place]]
+ref = "R6"
+x = 30.5
+y = 29.0
+rotation = 0
+[[floorplan.place]]
+ref = "R7"
+x = 24.0
+y = 32.0
+rotation = 0
+[[floorplan.place]]
+ref = "C6"
+x = 27.5
+y = 32.0
+rotation = 0
+[[floorplan.place]]
+ref = "C7"
+x = 31.0
+y = 32.0
+rotation = 0
+[[floorplan.place]]
+ref = "C5"
+x = 15.0
+y = 13.5
+rotation = 0
+[[floorplan.place]]
+ref = "R3"
+x = 18.5
+y = 13.5
+rotation = 0
+[[floorplan.place]]
+ref = "R4"
+x = 22.0
+y = 13.5
+rotation = 0
+[[floorplan.place]]
+ref = "Q1"
+x = 41.0
+y = 12.0
+rotation = 0
+[[floorplan.place]]
+ref = "Q2"
+x = 41.0
+y = 17.0
+rotation = 0
+[[floorplan.place]]
+ref = "Q3"
+x = 41.0
+y = 22.0
+rotation = 0
+[[floorplan.place]]
+ref = "Q4"
+x = 41.0
+y = 27.0
+rotation = 0
+[[floorplan.place]]
+ref = "R8"
+x = 44.5
+y = 12.0
+rotation = 0
+[[floorplan.place]]
+ref = "R9"
+x = 44.5
+y = 17.0
+rotation = 0
+[[floorplan.place]]
+ref = "R10"
+x = 44.5
+y = 22.0
+rotation = 0
+[[floorplan.place]]
+ref = "R11"
+x = 44.5
+y = 27.0
+rotation = 0
+[[floorplan.place]]
+ref = "R12"
+x = 47.5
+y = 12.0
+rotation = 0
+[[floorplan.place]]
+ref = "R13"
+x = 47.5
+y = 17.0
+rotation = 0
+[[floorplan.place]]
+ref = "R14"
+x = 47.5
+y = 22.0
+rotation = 0
+[[floorplan.place]]
+ref = "R15"
+x = 47.5
+y = 27.0
+rotation = 0
+[[floorplan.place]]
+ref = "J5"
+x = 44.0
+y = 47.0
+rotation = 0
+note = "5V IO header (DNP)"
+[[floorplan.place]]
+ref = "D3"
+x = 44.0
+y = 52.0
+rotation = 0
+[[floorplan.place]]
+ref = "R17"
+x = 47.5
+y = 55.0
+rotation = 0
+[[floorplan.place]]
+ref = "R18"
+x = 47.5
+y = 52.0
+rotation = 0
+[[floorplan.place]]
+ref = "R19"
+x = 47.5
+y = 49.0
+rotation = 0
+[[floorplan.place]]
+ref = "J3"
+x = 6.0
+y = 55.0
+rotation = 90
+note = "Qwiic, mouth toward the left edge"
+[[floorplan.place]]
+ref = "J4"
+x = 6.0
+y = 47.0
+rotation = 90
+
+# ----------------------------------------------------------- build: route
+
+[[zones.pour]]
+net = "GND"
+layer = "In1_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+[[zones.pour]]
+net = "5V"
+layer = "In2_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+[[zones.pour]]
+net = "VIN"
+layer = "F_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+priority = 2
+bbox = [2.0, 12.0, 26.0, 30.0]
+[[zones.pour]]
+net = "GND"
+layer = "F_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+priority = 1
+[[zones.pour]]
+net = "GND"
+layer = "B_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+priority = 1
+
+[[fanout.thermal_vias]]
+ref = "U1"
+pad = "9"
+net = "GND"
+via_size_mm = 0.6
+via_drill_mm = 0.3
+
+[route]
+via_size_mm = 0.6
+via_drill_mm = 0.3
+track_width_mm = 0.25
+power_track_width_mm = 0.30
+clearance_mm = 0.15
+
+[[silk.text]]
+text = "unoq-power-shield rev1"
+x = 27.0
+y = 1.2
+size = 1.0
+[[silk.text]]
+text = "VIN 7-24V"
+x = 9.0
+y = 10.5
+size = 0.9
+[[silk.text]]
+text = "5V 2A"
+x = 25.0
+y = 10.5
+size = 0.9
+[[silk.text]]
+text = "3.3V LOGIC"
+x = 33.0
+y = 44.0
+size = 0.9
+
+[fab]
+name = "unoq-power-shield"
+out_dir = "fab"
