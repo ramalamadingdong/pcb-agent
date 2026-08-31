@@ -171,6 +171,22 @@ def main() -> int:
     old_width = cls.get("track_width")
     cls["track_width"] = float(width)
 
+    # Enforce the clearance on EVERY class, every run — not only when the
+    # project file is bootstrapped. The netclass clearance reaches the DSN
+    # and freerouting routes to it; a class left at a smaller value than
+    # the DRC minimum turns every squeeze into a clearance violation.
+    route_clear = (cfg.get("route") or {}).get("clearance_mm")
+    if route_clear is not None:
+        for c in classes:
+            old_c = c.get("clearance")
+            if old_c != float(route_clear):
+                c["clearance"] = float(route_clear)
+                print(
+                    f"  {c.get('name')}.clearance {old_c} -> {route_clear} mm "
+                    "(matches [route] clearance_mm)",
+                    file=sys.stderr,
+                )
+
     pats = ns.setdefault("netclass_patterns", [])
     before = len(pats)
     kept = [p for p in pats if p.get("netclass") != class_name]

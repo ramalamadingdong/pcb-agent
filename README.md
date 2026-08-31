@@ -14,11 +14,14 @@ Written up in full at
 
 ## Status: passes landed, example board unproven
 
-The build passes are in `scripts/build/` and the front half of the pipeline
-runs end to end (netlist → schematic with a clean round-trip diff → board →
-netclasses → floorplan → holes). The placement loop, routing chain and fab
-export are being proven against the example board, and **no physical board
-has been fabricated yet** — until one comes back and powers on, treat
+The build passes are in `scripts/build/` and the whole pipeline runs end to
+end against the example board: netlist → schematic (clean round-trip diff) →
+board → netclasses → floorplan → holes → zones/fanout → freerouting →
+completion → fab export → checker. As of 2026-08-30 the example has passed
+its pre-order gates — **0 unconnected, 0 clearance violations** across 5
+identical DRC runs, `validate_gerbers` 14/0, ERC clean, every residual DRC
+item explained in its `rev-1-plan.md` ledger — but **no physical board has
+been fabricated yet**. Until one comes back and powers on, treat
 `examples/unoq-power-shield` as a pipeline exercise, not a verified
 reference design.
 
@@ -92,6 +95,10 @@ PCBWay. MIT. This is the install that matters most.
 before it writes the netlist. Those stops are the safety story. An
 idea-to-board prompt with no stops will produce sixty confident rows of
 hallucinated pin numbers and you won't find out until the boards arrive.
+
+From netlist to fab package for your own design:
+[docs/your-own-board.md](docs/your-own-board.md) — the board.toml sections,
+the placement loop, and the traps this repo already paid for.
 
 ## What's here and what isn't
 

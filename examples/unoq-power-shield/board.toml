@@ -36,7 +36,7 @@ class_width_mm = 0.30
 # GND and 5V are plane-fed (In1/In2): their surface copper is pad
 # escapes into vias — measured all <= 2.5 mm. Chains longer than
 # stub_max_mm still fail.
-plane_fed = ["GND", "5V", "VIN_RAW"]
+plane_fed = ["GND", "5V", "VIN_RAW", "VIN_PROT"]
 stub_max_mm = 3.0
 
 [silkscreen]
@@ -338,18 +338,18 @@ rotation = 0
 note = "reverse-polarity P-FET, first thing after J1"
 [[floorplan.place]]
 ref = "R2"
-x = 18.5
+x = 19.5
 y = 10.5
 rotation = 0
 [[floorplan.place]]
 ref = "D2"
-x = 15.0
+x = 14.5
 y = 10.5
 rotation = 0
 [[floorplan.place]]
 ref = "R1"
 x = 7.0
-y = 20.0
+y = 19.5
 rotation = 90
 note = "shunt directly below U2 - kelvin sense traces stay a few mm"
 [[floorplan.place]]
@@ -360,12 +360,12 @@ rotation = 0
 note = "INA226 right above the shunt; J10 VIN pin lands at (2.54, 22.86) beside it"
 [[floorplan.place]]
 ref = "C10"
-x = 11.5
-y = 30.0
+x = 10.5
+y = 31.0
 rotation = 0
 [[floorplan.place]]
 ref = "R16"
-x = 11.5
+x = 10.0
 y = 24.0
 rotation = 0
 [[floorplan.place]]
@@ -376,29 +376,29 @@ rotation = 0
 note = "buck; PowerPAD region drives [[thermal_vias]]"
 [[floorplan.place]]
 ref = "C1"
-x = 14.5
+x = 15.5
 y = 27.5
-rotation = 0
+rotation = 90
 [[floorplan.place]]
 ref = "C2"
-x = 19.5
-y = 27.5
+x = 21.0
+y = 28.5
 rotation = 0
 [[floorplan.place]]
 ref = "C3"
-x = 24.0
-y = 27.5
+x = 25.5
+y = 28.5
 rotation = 0
 [[floorplan.place]]
 ref = "C4"
-x = 15.0
-y = 17.0
+x = 20.0
+y = 26.5
 rotation = 0
 note = "boot cap by BOOT/PH corner"
 [[floorplan.place]]
 ref = "D1"
-x = 25.5
-y = 16.5
+x = 26.0
+y = 26.5
 rotation = 0
 note = "catch diode tight to PH and GND"
 [[floorplan.place]]
@@ -408,39 +408,39 @@ y = 22.0
 rotation = 0
 [[floorplan.place]]
 ref = "C8"
-x = 37.5
+x = 35.0
 y = 18.0
 rotation = 90
 [[floorplan.place]]
 ref = "C9"
-x = 37.5
+x = 35.0
 y = 26.0
 rotation = 90
 [[floorplan.place]]
 ref = "R5"
-x = 27.0
-y = 29.0
-rotation = 0
+x = 24.5
+y = 17.5
+rotation = 90
 [[floorplan.place]]
 ref = "R6"
-x = 30.5
-y = 29.0
-rotation = 0
+x = 22.5
+y = 17.5
+rotation = 270
 [[floorplan.place]]
 ref = "R7"
-x = 24.0
-y = 32.0
-rotation = 0
+x = 26.5
+y = 17.5
+rotation = 270
 [[floorplan.place]]
 ref = "C6"
-x = 27.5
-y = 32.0
-rotation = 0
+x = 30.5
+y = 17.5
+rotation = 90
 [[floorplan.place]]
 ref = "C7"
-x = 31.0
-y = 32.0
-rotation = 0
+x = 28.5
+y = 17.5
+rotation = 270
 [[floorplan.place]]
 ref = "C5"
 x = 15.0
@@ -448,103 +448,103 @@ y = 13.5
 rotation = 0
 [[floorplan.place]]
 ref = "R3"
-x = 18.5
-y = 13.5
-rotation = 0
+x = 13.0
+y = 20.0
+rotation = 90
 [[floorplan.place]]
 ref = "R4"
-x = 22.0
-y = 13.5
-rotation = 0
+x = 13.0
+y = 23.5
+rotation = 90
 [[floorplan.place]]
 ref = "Q1"
-x = 41.0
-y = 12.0
+x = 39.5
+y = 11.0
 rotation = 0
 [[floorplan.place]]
 ref = "Q2"
-x = 41.0
+x = 39.5
 y = 17.0
 rotation = 0
 [[floorplan.place]]
 ref = "Q3"
-x = 41.0
-y = 22.0
+x = 39.5
+y = 23.0
 rotation = 0
 [[floorplan.place]]
 ref = "Q4"
-x = 41.0
-y = 27.0
+x = 39.5
+y = 29.0
 rotation = 0
 [[floorplan.place]]
 ref = "R8"
-x = 44.5
-y = 12.0
+x = 43.5
+y = 11.0
 rotation = 0
 [[floorplan.place]]
 ref = "R9"
-x = 44.5
+x = 43.5
 y = 17.0
 rotation = 0
 [[floorplan.place]]
 ref = "R10"
-x = 44.5
-y = 22.0
+x = 43.5
+y = 23.0
 rotation = 0
 [[floorplan.place]]
 ref = "R11"
-x = 44.5
-y = 27.0
+x = 43.5
+y = 29.0
 rotation = 0
 [[floorplan.place]]
 ref = "R12"
-x = 47.5
-y = 12.0
+x = 47.0
+y = 11.0
 rotation = 0
 [[floorplan.place]]
 ref = "R13"
-x = 47.5
+x = 47.0
 y = 17.0
 rotation = 0
 [[floorplan.place]]
 ref = "R14"
-x = 47.5
-y = 22.0
+x = 47.0
+y = 23.0
 rotation = 0
 [[floorplan.place]]
 ref = "R15"
-x = 47.5
-y = 27.0
+x = 47.0
+y = 29.0
 rotation = 0
 [[floorplan.place]]
 ref = "J5"
-x = 44.0
-y = 59.5
+x = 30.0
+y = 55.0
 rotation = 0
 note = "5V IO header (DNP)"
 [[floorplan.place]]
 ref = "D3"
 x = 43.0
-y = 33.0
+y = 38.0
 rotation = 0
 [[floorplan.place]]
 ref = "R17"
-x = 46.5
-y = 30.5
-rotation = 0
-[[floorplan.place]]
-ref = "R18"
-x = 46.5
-y = 33.0
-rotation = 0
-[[floorplan.place]]
-ref = "R19"
-x = 46.5
+x = 47.0
 y = 35.5
 rotation = 0
 [[floorplan.place]]
+ref = "R18"
+x = 47.0
+y = 38.0
+rotation = 0
+[[floorplan.place]]
+ref = "R19"
+x = 47.0
+y = 40.5
+rotation = 0
+[[floorplan.place]]
 ref = "J3"
-x = 3.3
+x = 3.6
 y = 46.5
 rotation = 270
 note = "Qwiic, mouth toward the left edge"
@@ -567,6 +567,14 @@ layer = "In2_Cu"
 clearance_mm = 0.25
 min_thickness_mm = 0.15
 [[zones.pour]]
+net = "VIN_PROT"
+layer = "F_Cu"
+clearance_mm = 0.25
+min_thickness_mm = 0.15
+priority = 4
+bbox = [3.0, 8.0, 13.0, 23.0]
+
+[[zones.pour]]
 net = "VIN_RAW"
 layer = "F_Cu"
 clearance_mm = 0.25
@@ -580,31 +588,29 @@ layer = "F_Cu"
 clearance_mm = 0.25
 min_thickness_mm = 0.15
 priority = 2
-bbox = [2.0, 12.0, 26.0, 30.0]
-[[zones.pour]]
-net = "GND"
-layer = "F_Cu"
-clearance_mm = 0.25
-min_thickness_mm = 0.15
-priority = 1
-[[zones.pour]]
-net = "GND"
-layer = "B_Cu"
-clearance_mm = 0.25
-min_thickness_mm = 0.15
-priority = 1
-
-[[fanout.thermal_vias]]
-ref = "J3"
-pad = "MP"
-net = "GND"
+bbox = [2.0, 12.0, 21.5, 30.0]
+# U2 is 0.5 mm pitch: dogbone-escape every pad (stub + via, all four
+# spacings checked) - this is what fans its GND pad into the In1 plane
+[[fanout.target]]
+ref = "U2"
+# Only pad 7 (GND) gets a dogbone: it must reach the In1 plane, and no
+# other pass can draw that last millimetre. A FULL fanout of this MSOP
+# self-blocks - each pad's ring via sits exactly one 0.5 mm pitch from
+# its neighbour's stub, inside the 0.15 clearance at any legal via size
+# (board min via 0.5, min track 0.2 lands ON the bound, and equality
+# fails). Every other pad is a routed signal or fed by the VIN pours,
+# so only the plane-fed pad pays the via tax - and alone, it fits.
+track_width_mm = 0.3
 via_size_mm = 0.6
 via_drill_mm = 0.3
+skip_pads = ["1", "2", "3", "4", "5", "6", "8", "9", "10"]
 
+# D3's 5V pad has no same-net neighbour on the surface - without its
+# own via to the In2 plane it is a dead island (round-13 unconnected)
 [[fanout.thermal_vias]]
-ref = "J4"
-pad = "MP"
-net = "GND"
+ref = "D3"
+pad = "2"
+net = "5V"
 via_size_mm = 0.6
 via_drill_mm = 0.3
 
@@ -620,12 +626,26 @@ net = "GND"
 # orphan pour islands touch nothing and read as "missing connection"
 island_removal_layers = ["F_Cu", "B_Cu"]
 
+[route.completion]
+# clearance must match the DRC minimum (0.2) or every completion link
+# lands as a clearance violation; the bigger A* budget pays for the
+# tighter margin
+clearance_mm = 0.16
+max_pops = 120000
+total_budget_s = 600
+
 [route]
 via_size_mm = 0.6
 via_drill_mm = 0.3
 track_width_mm = 0.25
 power_track_width_mm = 0.30
-clearance_mm = 0.2
+clearance_mm = 0.15
+# bonding vias land beside SMD pads on plane-fed nets; with no surface
+# flood to join them, the micro-bridge is what draws the pad->via stub
+micro_bridge_max_mm = 3.0
+# the A* completion inflates obstacles by ITS OWN clearance; keep it
+# at the DRC minimum like everything else
+astar_clearance_mm = 0.16
 
 [[silk.text]]
 text = "unoq-power-shield rev1"
@@ -651,3 +671,10 @@ size = 0.9
 [fab]
 name = "unoq-power-shield"
 out_dir = "fab"
+
+[fab.jlc]
+bom_csv = "bom.csv"
+# KiCad pin-1 upper-left vs LCSC lower-left: the SOT-23 family usually
+# needs +180. VERIFY IN JLC'S DFM PREVIEW AT ORDER TIME - rotation
+# conventions are per-reel, and the preview render is the ground truth.
+rot180 = ["Q1", "Q2", "Q3", "Q4"]

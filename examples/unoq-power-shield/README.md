@@ -4,6 +4,14 @@
 or powered on yet. Until one has, treat this as a reference for exercising
 the pipeline, not a verified design.
 
+The *design* has passed its pre-order gates (2026-08-30): routed with
+**0 unconnected** and **0 clearance violations** across 5 identical DRC
+runs, `validate_gerbers` 14/0, ERC clean, every BOM line in stock. The 17
+residual DRC items are all form-factor or courtyard-graze artifacts,
+individually explained in the ledger in [rev-1-plan.md](rev-1-plan.md).
+Passing gates is not the same as working hardware — the UNBUILT warning
+above stands until a board has been powered on.
+
 **The stacking headers ship DNP** — the assembled board cannot plug into
 anything until you solder a stacking header set into the four plated hole
 strips. Any classic Arduino R3 stacking kit fits: SparkFun PRT-11417 or

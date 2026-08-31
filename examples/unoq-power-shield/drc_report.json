@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-08-30T20:30:37",
+    "date": "2026-08-30T21:41:48",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -30,284 +30,99 @@
     "kicad_version": "10.0.5",
     "schematic_parity": [],
     "source": "unoq-power-shield.kicad_pcb",
-    "unconnected_items": [
-        {
-            "description": "Missing connection between items",
-            "items": [
-                {
-                    "description": "Pad 2 [5V] of D3 on F.Cu",
-                    "pos": {
-                        "x": 164.205,
-                        "y": 106.765
-                    },
-                    "uuid": "24d10770-5f19-418a-ab28-e64ebe80c1c5"
-                },
-                {
-                    "description": "Via [5V] on F.Cu - B.Cu",
-                    "pos": {
-                        "x": 169.973826,
-                        "y": 111.613851
-                    },
-                    "uuid": "8e238a0c-fecc-4808-bf4b-2ac49dc744d7"
-                }
-            ],
-            "severity": "error",
-            "type": "unconnected_items"
-        },
-        {
-            "description": "Missing connection between items",
-            "items": [
-                {
-                    "description": "Zone [GND] on F.Cu, priority 1",
-                    "pos": {
-                        "x": 121.83,
-                        "y": 70.71
-                    },
-                    "uuid": "06f660b3-9b42-4f0e-968b-332734943f26"
-                },
-                {
-                    "description": "Zone [GND] on F.Cu, priority 1",
-                    "pos": {
-                        "x": 121.83,
-                        "y": 70.71
-                    },
-                    "uuid": "06f660b3-9b42-4f0e-968b-332734943f26"
-                }
-            ],
-            "severity": "error",
-            "type": "unconnected_items"
-        },
-        {
-            "description": "Missing connection between items",
-            "items": [
-                {
-                    "description": "Zone [GND] on F.Cu, priority 1",
-                    "pos": {
-                        "x": 121.83,
-                        "y": 70.71
-                    },
-                    "uuid": "06f660b3-9b42-4f0e-968b-332734943f26"
-                },
-                {
-                    "description": "Zone [GND] on F.Cu, priority 1",
-                    "pos": {
-                        "x": 121.83,
-                        "y": 70.71
-                    },
-                    "uuid": "06f660b3-9b42-4f0e-968b-332734943f26"
-                }
-            ],
-            "severity": "error",
-            "type": "unconnected_items"
-        }
-    ],
+    "unconnected_items": [],
     "violations": [
         {
-            "description": "Clearance violation (netclass 'Default' clearance 0.1500 mm; actual 0.0750 mm)",
+            "description": "Courtyards overlap",
             "items": [
                 {
-                    "description": "Via [RGB_G] on F.Cu - B.Cu",
+                    "description": "Footprint C8",
                     "pos": {
-                        "x": 164.705,
-                        "y": 104.515961
+                        "x": 156.83,
+                        "y": 121.29
                     },
-                    "uuid": "1574b3bf-0e0e-42a2-a93d-6402250f2abb"
+                    "uuid": "099f9323-a090-41e8-ae87-3640467c167c"
                 },
                 {
-                    "description": "Track [RGB_R] on F.Cu, length 2.0000 mm",
+                    "description": "Footprint L1",
                     "pos": {
-                        "x": 164.205,
-                        "y": 105.815
-                    },
-                    "uuid": "84840221-a69f-4dd4-b220-757287dfeac5"
-                }
-            ],
-            "severity": "error",
-            "type": "clearance"
-        },
-        {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1668 mm)",
-            "items": [
-                {
-                    "description": "Pad 6 [COMP] of U1 on F.Cu",
-                    "pos": {
-                        "x": 144.61,
-                        "y": 117.925
-                    },
-                    "uuid": "1a4a214d-2061-4619-b7c0-31242f4641e8"
-                },
-                {
-                    "description": "Track [PH] on F.Cu, length 0.2745 mm",
-                    "pos": {
-                        "x": 143.3783,
-                        "y": 117.4841
-                    },
-                    "uuid": "963cce76-3534-4c68-99ab-b7be41020977"
-                }
-            ],
-            "severity": "error",
-            "type": "clearance"
-        },
-        {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1536 mm)",
-            "items": [
-                {
-                    "description": "Pad 7 [GND] of U1 on F.Cu",
-                    "pos": {
-                        "x": 144.61,
-                        "y": 116.655
-                    },
-                    "uuid": "0cee3308-3b50-4aaa-9e72-edc792efa845"
-                },
-                {
-                    "description": "Track [PH] on F.Cu, length 0.3008 mm",
-                    "pos": {
-                        "x": 145.629,
+                        "x": 153.83,
                         "y": 117.29
                     },
-                    "uuid": "3cfb8768-64c8-42a0-8559-e40234015dea"
+                    "uuid": "7af36093-a9d5-4900-9309-f06b8faa9141"
                 }
             ],
             "severity": "error",
-            "type": "clearance"
+            "type": "courtyards_overlap"
         },
         {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1517 mm)",
+            "description": "Courtyards overlap",
             "items": [
                 {
-                    "description": "Pad 6 [COMP] of U1 on F.Cu",
+                    "description": "Footprint C3",
                     "pos": {
-                        "x": 144.61,
-                        "y": 117.925
+                        "x": 147.33,
+                        "y": 110.79
                     },
-                    "uuid": "1a4a214d-2061-4619-b7c0-31242f4641e8"
+                    "uuid": "10f14ec9-b4c3-4dc8-8332-949ba87ec713"
                 },
                 {
-                    "description": "Track [PH] on F.Cu, length 2.1617 mm",
+                    "description": "Footprint D1",
                     "pos": {
-                        "x": 143.3783,
-                        "y": 119.6458
+                        "x": 147.83,
+                        "y": 112.79
                     },
-                    "uuid": "668d4a65-1978-4567-b338-5ad47e92705e"
+                    "uuid": "3cafc42d-7690-4557-9644-3efcb7ea3f1d"
                 }
             ],
             "severity": "error",
-            "type": "clearance"
+            "type": "courtyards_overlap"
         },
         {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1517 mm)",
+            "description": "Courtyards overlap",
             "items": [
                 {
-                    "description": "Pad 7 [GND] of U1 on F.Cu",
+                    "description": "Footprint D1",
                     "pos": {
-                        "x": 144.61,
-                        "y": 116.655
+                        "x": 147.83,
+                        "y": 112.79
                     },
-                    "uuid": "0cee3308-3b50-4aaa-9e72-edc792efa845"
+                    "uuid": "3cafc42d-7690-4557-9644-3efcb7ea3f1d"
                 },
                 {
-                    "description": "Track [PH] on F.Cu, length 1.6923 mm",
+                    "description": "Footprint L1",
                     "pos": {
-                        "x": 145.8417,
-                        "y": 117.0773
+                        "x": 153.83,
+                        "y": 117.29
                     },
-                    "uuid": "83d16ed9-4838-4209-969e-90d1a5262155"
+                    "uuid": "7af36093-a9d5-4900-9309-f06b8faa9141"
                 }
             ],
             "severity": "error",
-            "type": "clearance"
+            "type": "courtyards_overlap"
         },
         {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1738 mm)",
+            "description": "Courtyards overlap",
             "items": [
                 {
-                    "description": "Track [PH] on F.Cu, length 1.7327 mm",
+                    "description": "Footprint D1",
                     "pos": {
-                        "x": 144.6035,
-                        "y": 120.871
+                        "x": 147.83,
+                        "y": 112.79
                     },
-                    "uuid": "056a0394-8b2d-46a6-8306-d8ba9d1582dd"
+                    "uuid": "3cafc42d-7690-4557-9644-3efcb7ea3f1d"
                 },
                 {
-                    "description": "Pad 5 [FB] of U1 on F.Cu",
+                    "description": "Footprint C2",
                     "pos": {
-                        "x": 144.61,
-                        "y": 119.195
+                        "x": 142.83,
+                        "y": 110.79
                     },
-                    "uuid": "ef9095bf-950e-419f-8852-21dca4fa715a"
+                    "uuid": "c7e26566-38ad-48ae-bfb9-266609ca7f3d"
                 }
             ],
             "severity": "error",
-            "type": "clearance"
-        },
-        {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1517 mm)",
-            "items": [
-                {
-                    "description": "Track [EN] on F.Cu, length 6.9917 mm",
-                    "pos": {
-                        "x": 140.2817,
-                        "y": 117.925
-                    },
-                    "uuid": "07a68206-f1f2-4e83-a900-8ebea43ceafd"
-                },
-                {
-                    "description": "Pad 4 [SS] of U1 on F.Cu",
-                    "pos": {
-                        "x": 139.05,
-                        "y": 119.195
-                    },
-                    "uuid": "2d2d8909-917d-4c80-a158-fe3311de7da1"
-                }
-            ],
-            "severity": "error",
-            "type": "clearance"
-        },
-        {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1683 mm)",
-            "items": [
-                {
-                    "description": "Track [VIN] on F.Cu, length 1.1344 mm",
-                    "pos": {
-                        "x": 139.1723,
-                        "y": 116.655
-                    },
-                    "uuid": "344ca22c-f6ee-4741-90bb-e9ac71f1b8a8"
-                },
-                {
-                    "description": "Pad 9 [GND] of U1 on F.Cu",
-                    "pos": {
-                        "x": 141.2275,
-                        "y": 116.515
-                    },
-                    "uuid": "3dea7421-f9dd-424c-a2f4-f2900864096f"
-                }
-            ],
-            "severity": "error",
-            "type": "clearance"
-        },
-        {
-            "description": "Clearance violation (footprint U1 clearance 0.2000 mm; actual 0.1600 mm)",
-            "items": [
-                {
-                    "description": "Track [VIN] on F.Cu, length 3.6176 mm",
-                    "pos": {
-                        "x": 140.315,
-                        "y": 113.0291
-                    },
-                    "uuid": "20b2d9ad-4cb0-4520-a00b-dbe1a64899bc"
-                },
-                {
-                    "description": "Pad 9 [GND] of U1 on F.Cu",
-                    "pos": {
-                        "x": 141.2275,
-                        "y": 116.515
-                    },
-                    "uuid": "3dea7421-f9dd-424c-a2f4-f2900864096f"
-                }
-            ],
-            "severity": "error",
-            "type": "clearance"
+            "type": "courtyards_overlap"
         },
         {
             "description": "Courtyards overlap",
@@ -359,20 +174,43 @@
             "description": "Courtyards overlap",
             "items": [
                 {
-                    "description": "Footprint FID3",
+                    "description": "Footprint C9",
                     "pos": {
-                        "x": 167.78,
-                        "y": 81.34
+                        "x": 156.83,
+                        "y": 113.29
                     },
-                    "uuid": "4626fc35-7406-444c-9136-2696c3cac3b3"
+                    "uuid": "45f8ccea-5b81-4e63-9900-b4afb6517e5e"
                 },
                 {
-                    "description": "Footprint J5",
+                    "description": "Footprint L1",
                     "pos": {
-                        "x": 165.83,
-                        "y": 79.79
+                        "x": 153.83,
+                        "y": 117.29
                     },
-                    "uuid": "99c48ab0-a177-4aee-82a5-f6b8c39aeae3"
+                    "uuid": "7af36093-a9d5-4900-9309-f06b8faa9141"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint R1",
+                    "pos": {
+                        "x": 128.83,
+                        "y": 119.79
+                    },
+                    "uuid": "624aae1e-30a7-4dbe-a54c-ce481f897c3f"
+                },
+                {
+                    "description": "Footprint R16",
+                    "pos": {
+                        "x": 131.83,
+                        "y": 115.29
+                    },
+                    "uuid": "d61e2318-36a9-4be6-a222-2b74bc623b51"
                 }
             ],
             "severity": "error",
@@ -405,17 +243,63 @@
             "description": "Courtyards overlap",
             "items": [
                 {
-                    "description": "Footprint R2",
+                    "description": "Footprint L1",
                     "pos": {
-                        "x": 140.33,
-                        "y": 128.79
+                        "x": 153.83,
+                        "y": 117.29
                     },
-                    "uuid": "8e7f8c61-c07a-4ed6-a41e-4b457514cd8d"
+                    "uuid": "7af36093-a9d5-4900-9309-f06b8faa9141"
+                },
+                {
+                    "description": "Footprint C7",
+                    "pos": {
+                        "x": 150.33,
+                        "y": 121.79
+                    },
+                    "uuid": "83c703b3-55c6-4cc3-bd31-d2d91ea488ec"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint L1",
+                    "pos": {
+                        "x": 153.83,
+                        "y": 117.29
+                    },
+                    "uuid": "7af36093-a9d5-4900-9309-f06b8faa9141"
+                },
+                {
+                    "description": "Footprint C6",
+                    "pos": {
+                        "x": 152.33,
+                        "y": 121.79
+                    },
+                    "uuid": "d6b3be2e-9512-47ec-9950-24941c4a7764"
+                }
+            ],
+            "severity": "error",
+            "type": "courtyards_overlap"
+        },
+        {
+            "description": "Courtyards overlap",
+            "items": [
+                {
+                    "description": "Footprint Q5",
+                    "pos": {
+                        "x": 130.33,
+                        "y": 127.29
+                    },
+                    "uuid": "abcc10f2-5910-4d92-9880-f66b7e48e608"
                 },
                 {
                     "description": "Footprint D2",
                     "pos": {
-                        "x": 136.83,
+                        "x": 136.33,
                         "y": 128.79
                     },
                     "uuid": "ca8ad778-4484-4141-96be-9d3820600991"

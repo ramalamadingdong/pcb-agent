@@ -141,6 +141,20 @@ def main() -> int:
         return "(class " + m.group(1).replace(",", "_")
 
     text, n_cls = re.subn(r"\(class\s+([^\s()]+)", _fix_class, text)
+
+    # ---- router margin over the DRC constraint ------------------------------
+    # The netclass clearance IS KiCad's DRC minimum. A router given exactly
+    # that number routes gaps at exactly that number, and micrometre
+    # rounding through the DSN/SES round-trip lands a hair under — every
+    # such squeeze becomes a DRC clearance violation. Give the router
+    # +0.01 mm so routed gaps clear the constraint with margin.
+    def _bump_clearance(m):
+        return f"(clearance {float(m.group(1)) + 10:.1f}"
+
+    text, n_clr = re.subn(r"\(clearance\s+([\d.]+)", _bump_clearance, text)
+    if n_clr:
+        log(f"bumped {n_clr} DSN clearance rule(s) by 10 um (router margin)")
+
     if n_cls:
         log(f"sanitised {n_cls} class name(s) (commas -> _)")
 

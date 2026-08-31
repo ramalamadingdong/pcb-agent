@@ -158,7 +158,7 @@ contention because the shield never drives the 5 V or 3V3 header pins.
 | Rule | Physical reason here |
 | --- | --- |
 | thermal vias | U1's PowerPAD is the only path that keeps the buck ≤35 °C over ambient |
-| power width ≥0.8 mm | VIN carries up to 4 A; IPC-2221 math above |
+| power width ≥0.3 mm + F.Cu pours | VIN carries up to 4 A, but the 0.8 mm the IPC-2221 math implies cannot enter a 0.3 mm pad (the rev-D lesson). Surface power tracks are short hops at 0.3; the current path is the In2 plane plus the bounded F.Cu VIN/VIN_RAW/VIN_PROT pours, whose cross-section satisfies the math. Rationale in `board.toml [nets.power]` |
 | mounting holes 4×3.2 | fixed by the UNO drill file, coordinates in R2 |
 | planes In1/In2 | solid GND under the switcher; power plane |
 | keepout X 0–26, Y 61–68.58 | the UNO Q's Wi-Fi antenna is directly below — copper there detunes the radio |
@@ -166,17 +166,42 @@ contention because the shield never drives the 5 V or 3V3 header pins.
 
 ## Gates — all must pass before ordering
 
-- [ ] Schematic round-trip diff clean against `netlist.csv`
-- [ ] ERC clean
-- [ ] DRC run 5+ times, comparing which violations appear
-- [ ] `validate_gerbers` PASS with this board's `board.toml`
-- [ ] Antenna keepout verified **in the gerbers** (not the KiCad file)
-- [ ] Thermal vias under U1 ≥ the TI layout guideline count ([[thermal_vias]] coords filled in `board.toml` after floorplan)
-- [ ] Fiducials found by the checker (proves X2 AperFunction tags)
-- [ ] Shield drill pattern matches R2/R3 coordinates exactly (diff against the UNO Q drill values)
-- [ ] Every part in stock at order time, re-verified against JLC
-- [ ] Ordered files committed byte-for-byte
-- [ ] README carries the CC BY-SA 4.0 attribution for Arduino's documents
+Signed off 2026-08-30 except the two that can only close at order time.
+
+- [x] Schematic round-trip diff clean against `netlist.csv`
+- [x] ERC clean (0 violations)
+- [x] DRC run 5+ times, comparing which violations appear — 5 identical
+      runs: 17 violation(s) in 3 kind(s), **0 unconnected**, no unstable
+      kinds. Every residual is in the ledger below; **0 clearance
+      violations**.
+- [x] `validate_gerbers` PASS with this board's `board.toml` — 14 passed,
+      0 failed (2 SKIPs: unmatched mask/paste files, no RF budget)
+- [x] Antenna keepout verified **in the gerbers** (not the KiCad file) —
+      `keepouts/unoq_wifi_antenna` clear on all 4 layers
+- [x] Thermal vias under U1 ≥ the TI layout guideline count — 4/4 in the
+      PowerPAD region
+- [x] Fiducials found by the checker (proves X2 AperFunction tags) — 3
+      found, 10.13 mm off-axis
+- [x] Shield drill pattern matches R2/R3 coordinates exactly — checker
+      `drill/mounting-holes` 4×3.2 mm at the UNO drill positions,
+      `frame/origin` within 0.050 mm
+- [x] Every part in stock (verified against JLC 2026-08-30, all 24 lines)
+      — **re-verify at order time**
+- [ ] Ordered files committed byte-for-byte (open until the order is
+      actually placed)
+- [x] README carries the CC BY-SA 4.0 attribution for Arduino's documents
+
+## Residual DRC ledger — every remaining violation, explained
+
+17 items in 3 kinds, identical across 5 consecutive DRC runs. None is a
+clearance or connectivity defect; each is either the UNO form factor or a
+conservative-courtyard graze with real body-to-body space.
+
+| Kind | Count | Explanation |
+| --- | --- | --- |
+| `copper_edge_clearance` | 4 | All four are J4's pads (Qwiic, JST SM04B side-entry): the connector mounts at the board edge by design, so its pads sit inside the 0.5 mm edge rule. Land pattern per the SM04B datasheet. |
+| `pth_inside_courtyard` | 1 | J13 pin 10 inside mounting hole H1's courtyard. Both positions are Arduino's — fixed by the UNO Q drill data — and every real UNO shield carries this same adjacency. |
+| `courtyards_overlap` | 12 | 3 are the same UNO form-factor fixture (H1/J13, H2/J4, H3/J1). The other 9 are courtyard-to-courtyard grazes in the deliberately tight power stage (L1 vs C6/C7/C8/C9/D1, D1 vs C2/C3, Q5/D2, R1/R16): bodies clear, conservative courtyards touch. The placement check reports the same set as 13 warnings, 0 errors. |
 
 ## Open items (blocking netlist, not blocking sign-off)
 
