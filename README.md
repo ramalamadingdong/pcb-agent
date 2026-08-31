@@ -10,7 +10,13 @@ five levels of checking, the last of which parses the exported gerbers,
 because the gerbers are what the factory builds.
 
 Written up in full at
-[mouro.ai/blog/pcb-design-with-ai](https://mouro.ai/blog/pcb-design-with-ai/).
+[mouro.ai/blog/pcb-design-with-ai](https://mouro.ai/blog/pcb-design-with-ai/)
+— why the CSV is the source of truth, the tool behaviour each pass exists
+to survive, and what the example board cost to finish.
+
+**New here? [docs/end-to-end.md](docs/end-to-end.md)** is the whole path in
+one page: install, prove the toolchain on the example, then your own board
+from an idea to a fab package.
 
 ## Status: passes landed, example board unproven
 
@@ -96,7 +102,9 @@ before it writes the netlist. Those stops are the safety story. An
 idea-to-board prompt with no stops will produce sixty confident rows of
 hallucinated pin numbers and you won't find out until the boards arrive.
 
-From netlist to fab package for your own design:
+The whole path, install to fab package:
+[docs/end-to-end.md](docs/end-to-end.md). From netlist to fab package for
+your own design, in more detail:
 [docs/your-own-board.md](docs/your-own-board.md) — the board.toml sections,
 the placement loop, and the traps this repo already paid for.
 
