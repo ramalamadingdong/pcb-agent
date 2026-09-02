@@ -3,6 +3,17 @@
 Design a circuit board end to end with an agent. Parts, netlist, placement,
 routing, gerbers a fab will build. You review, it does the work.
 
+<p align="center">
+  <img src="examples/unoq-power-shield/img/board-iso.png" width="520"
+       alt="3D render of the example board: a UNO Q power and I/O shield, 49 components on four layers">
+</p>
+
+<p align="center"><em>The example board —
+<a href="examples/unoq-power-shield">examples/unoq-power-shield</a>, 49 components
+on four layers, routed to 0 unconnected and 0 clearance violations. A KiCad render
+of the design files in this repo; <strong>no physical board has been
+fabricated</strong>.</em></p>
+
 The method: **the design lives in a CSV, not in KiCad.** One row per pin.
 Scripts build the schematic and the board from it. Nothing in the KiCad files
 is edited by hand — to change the circuit you edit a row and rebuild. Then

@@ -1,5 +1,21 @@
 # UNO Q power & I/O demo shield
 
+<table>
+<tr>
+<td width="50%"><img src="img/board-assembled.png" alt="Render of the board with every component placed"></td>
+<td width="50%"><img src="img/board-bare.png" alt="Render of the bare PCB with no components"></td>
+</tr>
+<tr>
+<td align="center"><em><strong>Populated</strong> — every footprint with its 3D
+model, <strong>including</strong> the stacking headers. Those ship <strong>DNP</strong>
+(see below), so a board back from the assembler will not look like this until
+you solder them in.</em></td>
+<td align="center"><em><strong>Bare</strong> — the PCB the fab builds from the
+gerbers: four-layer copper, mask, silk, and the three X2-tagged fiducials the
+assembler's vision system needs.</em></td>
+</tr>
+</table>
+
 **Status: UNBUILT.** No physical board of this design has been fabricated
 or powered on yet. Until one has, treat this as a reference for exercising
 the pipeline, not a verified design.
