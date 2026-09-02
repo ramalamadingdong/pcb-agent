@@ -17,3 +17,8 @@ mnt/
 __pycache__/
 *.pyc
 .venv/
+
+# pcbnew writes a .kicad_pro beside any board it saves; the snapshot has
+# no use for one (route.py copies only the .kicad_pcb).
+*/pre_route.kicad_pro
+**/pre_route.kicad_pro
