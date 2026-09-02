@@ -42,6 +42,14 @@ Two jobs:
    stripped on re-run — idempotent.  The markings are placed FIRST (fixed
    positions), so the Reference search above can dodge them.
 
+   Markings are never MOVED: their coordinates are the author's, and where a
+   label sits is the whole point of it.  That once made them the only silk on
+   the board nothing checked — every refdes was dodging pads while a declared
+   marking could sit straight on top of one.  So each declared marking is now
+   tested against the pad mask openings and a collision is WARNED about, by
+   the board.toml line that declared it.  It stays a warning, not a failure:
+   the pass cannot know a better position, only that this one prints badly.
+
 Run after placement is final.  Safe to re-run at any later point, including
 after routing — the search is deterministic, so re-running reproduces the
 same placements.  (Geometry is reproduced exactly; the KIIDs pcbnew mints
@@ -240,6 +248,9 @@ def main() -> int:
     group.SetName(GROUP_NAME)
     b.Add(group)
     added = []
+    # (item, "[[silk.text]] #n", label) for every marking the config declared,
+    # so a collision can be reported against the line the author wrote.
+    declared = []
 
     def text(s, x, y, size=1.0, thickness=None, bold=False, layer=None):
         t = pcbnew.PCB_TEXT(b)
@@ -277,29 +288,37 @@ def main() -> int:
         missing = [k for k in ("text", "x", "y") if k not in item]
         if missing:
             _lib.fail(f"{where} is missing " + ", ".join(missing))
-        text(
+        declared.append((
+            text(
+                str(item["text"]),
+                float(item["x"]),
+                float(item["y"]),
+                size=float(item.get("size", 1.0)),
+                thickness=item.get("thickness_mm"),
+                bold=bool(item.get("bold", False)),
+                layer=resolve_layer(item.get("layer"), f_silk, where),
+            ),
+            where,
             str(item["text"]),
-            float(item["x"]),
-            float(item["y"]),
-            size=float(item.get("size", 1.0)),
-            thickness=item.get("thickness_mm"),
-            bold=bool(item.get("bold", False)),
-            layer=resolve_layer(item.get("layer"), f_silk, where),
-        )
+        ))
 
     for i, item in enumerate(scfg.get("line", []) or []):
         where = f"[[silk.line]] #{i + 1}"
         missing = [k for k in ("x1", "y1", "x2", "y2") if k not in item]
         if missing:
             _lib.fail(f"{where} is missing " + ", ".join(missing))
-        line(
-            float(item["x1"]),
-            float(item["y1"]),
-            float(item["x2"]),
-            float(item["y2"]),
-            w=float(item.get("width", 0.2)),
-            layer=resolve_layer(item.get("layer"), f_silk, where),
-        )
+        declared.append((
+            line(
+                float(item["x1"]),
+                float(item["y1"]),
+                float(item["x2"]),
+                float(item["y2"]),
+                w=float(item.get("width", 0.2)),
+                layer=resolve_layer(item.get("layer"), f_silk, where),
+            ),
+            where,
+            "line",
+        ))
 
     for it in added:
         group.AddItem(it)
@@ -311,6 +330,7 @@ def main() -> int:
     # silk graphics.  Collected into plain tuples before any further use.
     footprints = sorted(list(b.GetFootprints()),
                         key=lambda f: natkey(f.GetReference()))
+    named_pads = []
     for fp in footprints:
         for pad in fp.Pads():
             pb = pad.GetBoundingBox()
@@ -318,6 +338,9 @@ def main() -> int:
             # A pad blocks silk on whichever side it appears; a through-hole
             # pad appears on both, so pads are registered layer-agnostic.
             obstacles.append((rect_of(pb), "pad", None))
+            named_pads.append(
+                (rect_of(pb), f"{fp.GetReference()}.{pad.GetNumber()}")
+            )
         for gi in fp.GraphicalItems():
             if gi.GetLayer() in silk_layers:
                 obstacles.append(
@@ -406,6 +429,26 @@ def main() -> int:
         return out
 
     warnings = []
+
+    # Declared markings are placed at the author's coordinates and are never
+    # moved (their position is meaningful — they label a specific part). That
+    # makes them the one silk item nothing else checks: the refdes search
+    # below treats them as fixed obstacles and dodges THEM. So test them
+    # against the pad mask openings here and say so plainly. A fab clips silk
+    # at the mask opening, so a marking over a pad prints broken and lands ink
+    # on a solderable surface.
+    for it, where, label in declared:
+        r = rect_of(it.GetBoundingBox())
+        hits = [name for prect, name in named_pads if rects_overlap(r, prect)]
+        if hits:
+            shown = ", ".join(sorted(set(hits))[:4])
+            more = "" if len(set(hits)) <= 4 else f" (+{len(set(hits)) - 4} more)"
+            warnings.append(
+                f'{where} "{label}" overlaps pad(s) {shown}{more} — the fab '
+                f"clips silk at the mask opening, so this prints broken and "
+                f"puts ink on a solderable pad. Move it in board.toml."
+            )
+
     fixed = 0
     for fp in footprints:
         flipped = fp.IsFlipped()

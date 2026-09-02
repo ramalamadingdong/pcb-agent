@@ -1827,7 +1827,7 @@
 		(descr "Through hole straight pin header, 1x06, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x06 2.54mm single row")
 		(property "Reference" "J11"
-			(at 0 15.615 0)
+			(at 4.5 -2.915 0)
 			(layer "F.SilkS")
 			(uuid "1e3c6926-a95c-4071-a38b-e2f0b2cbd52f")
 			(effects
@@ -7286,7 +7286,7 @@
 		(descr "SOIC, 8 Pin (JEDEC MS-012AA, https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/soic_narrow-r/r_8.pdf)")
 		(tags "SOIC SO")
 		(property "Reference" "Q5"
-			(at 5.62175 4.345 0)
+			(at -1.8 3.845 0)
 			(layer "F.SilkS")
 			(uuid "6431239c-5d71-4576-97f7-a8bc14e49003")
 			(effects
@@ -9042,7 +9042,7 @@
 		(at 129.45 136.75)
 		(descr "3.2mm NPTH mounting hole, UNO form factor (positions from the UNO Q drill file T08 block: 4x 3.200 NON_PLATED). 6.5mm courtyard = M3 screw head keep-out, an obstacle the placement optimiser packs around.")
 		(property "Reference" "H3"
-			(at -0.001233 -4.396232 0)
+			(at -4.674214 -0.000001 0)
 			(layer "F.SilkS")
 			(uuid "269775ab-5f80-46db-a9b8-04d14271899b")
 			(effects
@@ -10902,9 +10902,9 @@
 		(uuid "182c74e9-db7b-4931-be82-b0bb208cc209")
 	)
 	(gr_text "VIN 7-24V"
-		(at 130.78 128.84 0)
+		(at 133.78 131.84 0)
 		(layer "F.SilkS")
-		(uuid "c7c2d5a9-3864-49de-aeca-9844726742d9")
+		(uuid "46f41342-3aef-4249-ac44-c82cc929deb1")
 		(effects
 			(font
 				(size 0.9 0.9)
@@ -10915,7 +10915,7 @@
 	(gr_text "5V 2A"
 		(at 146.78 128.84 0)
 		(layer "F.SilkS")
-		(uuid "f74285c4-2ccf-4501-8ced-d20e2df4b805")
+		(uuid "038a8c4b-31a0-414b-988e-ec5cb1423e14")
 		(effects
 			(font
 				(size 0.9 0.9)
@@ -10923,10 +10923,10 @@
 			)
 		)
 	)
-	(gr_text "3.3V LOGIC"
-		(at 154.78 95.34 0)
+	(gr_text "5V IO"
+		(at 156.78 91.34 0)
 		(layer "F.SilkS")
-		(uuid "a8384525-c663-4f1e-8247-dca25cebaf7e")
+		(uuid "d5398fa5-1110-44a3-855c-d0e6052213bb")
 		(effects
 			(font
 				(size 0.9 0.9)
@@ -10935,9 +10935,9 @@
 		)
 	)
 	(gr_text "unoq-power-shield rev1"
-		(at 148.78 138.14 0)
+		(at 144.28 138.14 0)
 		(layer "F.SilkS")
-		(uuid "a74dc9b2-2325-43be-ad1b-ed8b9d62a277")
+		(uuid "e1c0e168-b249-49f4-9916-048e9088b846")
 		(effects
 			(font
 				(size 1 1)
@@ -19990,9 +19990,9 @@
 		)
 	)
 	(group "SILK_MARKINGS"
-		(uuid "9caaac3c-d116-45cb-9162-5d9b3c7e5a32")
-		(members "a74dc9b2-2325-43be-ad1b-ed8b9d62a277" "a8384525-c663-4f1e-8247-dca25cebaf7e"
-			"c7c2d5a9-3864-49de-aeca-9844726742d9" "f74285c4-2ccf-4501-8ced-d20e2df4b805"
+		(uuid "ba6e24ca-1200-4e1c-8cbb-dd971f1e5ca4")
+		(members "038a8c4b-31a0-414b-988e-ec5cb1423e14" "46f41342-3aef-4249-ac44-c82cc929deb1"
+			"d5398fa5-1110-44a3-855c-d0e6052213bb" "e1c0e168-b249-49f4-9916-048e9088b846"
 		)
 	)
 	(embedded_fonts no)

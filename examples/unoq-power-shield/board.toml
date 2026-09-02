@@ -647,15 +647,24 @@ micro_bridge_max_mm = 3.0
 # at the DRC minimum like everything else
 astar_clearance_mm = 0.16
 
+# Marking coordinates are the author's and silk_finish never moves them, so
+# every one of these is checked against the pad mask openings and warned
+# about (a fab clips silk at the mask opening: ink on a pad prints broken
+# AND lands on a solderable surface). All four sat on pads until that check
+# existed. The trap behind three of them: a KiCad connector footprint is
+# anchored at PIN 1, not at its body centre, so a header's [[floorplan]]
+# (x, y) is where pin 1 goes and the part extends away from there.
 [[silk.text]]
 text = "unoq-power-shield rev1"
-x = 27.0
+# was x = 27.0: ran across mounting hole H2's pad at (35.56, 2.54)
+x = 22.5
 y = 1.2
 size = 1.0
 [[silk.text]]
 text = "VIN 7-24V"
-x = 9.0
-y = 10.5
+# was (9.0, 10.5): sat on Q5's pads 3-6 and D2.1 (Q5 is at (8.5, 12.0))
+x = 12.0
+y = 7.5
 size = 0.9
 [[silk.text]]
 text = "5V 2A"
@@ -663,9 +672,16 @@ x = 25.0
 y = 10.5
 size = 0.9
 [[silk.text]]
-text = "3.3V LOGIC"
-x = 33.0
-y = 44.0
+# J5 is the 5 V side of the level shifters (nets HV1-HV4 + 5V + GND) — the
+# label read "3.3V LOGIC", which named the wrong rail on the one connector
+# whose entire purpose is that it is NOT the 3.3 V side. Matches [parts.J5]
+# value = "5V IO".
+text = "5V IO"
+# was (33.0, 44.0): J5's pin 1 is at y = 55.0 and its pads run DOWN to
+# y = 42.35, so y = 44 landed between pins 5 and 6 — on the pads. Now
+# beside the header, clear of the pad column at x = 30.05.
+x = 35.0
+y = 48.0
 size = 0.9
 
 [fab]

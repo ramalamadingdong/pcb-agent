@@ -191,6 +191,20 @@ Signed off 2026-08-30 except the two that can only close at order time.
       actually placed)
 - [x] README carries the CC BY-SA 4.0 attribution for Arduino's documents
 
+### Change after sign-off — 2026-09-02, silkscreen only
+
+Four `[[silk.text]]` markings were printing on pads, and J5's named the
+wrong rail (`3.3V LOGIC` on the 5 V side of the level shifters). Corrected
+in `board.toml`; `silk_finish` gained the pad-collision check that should
+have caught it — see that pass's docstring.
+
+Copper was NOT re-routed. Only `silk_finish` and the export were re-run,
+and the gerbers prove it: F.Cu, In1.Cu, In2.Cu, B.Cu, Edge.Cuts, both mask
+and both paste layers, and both drill files are **byte-identical** to the
+signed-off package (modulo the generation timestamp). `F_Silkscreen` is
+the only file that changed. Gates re-run on the new package: checker 14/0,
+DRC ×5 → 17 violations / 3 kinds / **0 unconnected**, unchanged.
+
 ## Residual DRC ledger — every remaining violation, explained
 
 17 items in 3 kinds, identical across 5 consecutive DRC runs. None is a

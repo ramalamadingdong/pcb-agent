@@ -7,9 +7,11 @@
 </tr>
 <tr>
 <td align="center"><em><strong>Populated</strong> — every footprint with its 3D
-model, <strong>including</strong> the stacking headers. Those ship <strong>DNP</strong>
-(see below), so a board back from the assembler will not look like this until
-you solder them in.</em></td>
+model. The four edge strips and J5 are drawn as plain male pin headers because
+that is what the footprint's model is; the real parts are <strong>stacking</strong>
+headers — female sockets on top, long tails passing down into the UNO Q — and
+they ship <strong>DNP</strong> (see below), so an assembled board arrives with
+those pads bare.</em></td>
 <td align="center"><em><strong>Bare</strong> — the PCB the fab builds from the
 gerbers: four-layer copper, mask, silk, and the three X2-tagged fiducials the
 assembler's vision system needs.</em></td>
