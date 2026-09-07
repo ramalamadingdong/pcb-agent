@@ -694,3 +694,36 @@ bom_csv = "bom.csv"
 # needs +180. VERIFY IN JLC'S DFM PREVIEW AT ORDER TIME - rotation
 # conventions are per-reel, and the preview render is the ground truth.
 rot180 = ["Q1", "Q2", "Q3", "Q4"]
+
+# Connectors you plug into from a board edge. Only edge-mating parts belong
+# here: J5/J10-J13 are the vertical Arduino stacking headers, which mate from
+# ABOVE, and this check has no model for that.
+[[connectors]]
+ref = "J1"                  # KF301 screw terminal, wires in from the front
+face = "bottom"
+mating_depth_mm = 10.0      # screwdriver + wire boot
+edge_offset_mm = 1.5
+# H3's screw head reaches ~1.9 mm into the left pole's wire path. The hole is
+# at Arduino's fixed UNO position and J1 is on the only free edge, so this is
+# acknowledged, not fixable — same adjacency the DRC ledger lists as
+# courtyards_overlap H3/J1. Use a countersunk M3 there.
+accept_blockers = ["H3"]
+
+[[connectors]]
+ref = "J2"
+face = "bottom"
+mating_depth_mm = 10.0
+edge_offset_mm = 1.5
+
+[[connectors]]
+ref = "J3"                  # JST SH, cable exits sideways
+face = "left"
+mating_depth_mm = 6.0
+
+[[connectors]]
+ref = "J4"
+face = "bottom"
+mating_depth_mm = 6.0
+# 0.5 mm2 graze of H2's screw head at the far corner of the Qwiic cable exit;
+# same fixed-hole story as J1/H3, and the ribbon exits the other way.
+accept_blockers = ["H2"]

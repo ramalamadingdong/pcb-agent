@@ -176,6 +176,11 @@ Signed off 2026-08-30 except the two that can only close at order time.
       violations**.
 - [x] `validate_gerbers` PASS with this board's `board.toml` — 14 passed,
       0 failed (2 SKIPs: unmatched mask/paste files, no RF budget)
+- [x] `check_placement` PASS — 5 passed, 0 failed. Every edge-mating
+      connector (J1, J2 screw terminals; J3, J4 Qwiic) reaches its edge and
+      has a clear mating corridor, with two acknowledged screw-head grazes
+      (see below); antenna keepout clear of tracks, vias, pads and pour in
+      the board file as well as the gerbers
 - [x] Antenna keepout verified **in the gerbers** (not the KiCad file) —
       `keepouts/unoq_wifi_antenna` clear on all 4 layers
 - [x] Thermal vias under U1 ≥ the TI layout guideline count — 4/4 in the
@@ -216,6 +221,24 @@ conservative-courtyard graze with real body-to-body space.
 | `copper_edge_clearance` | 4 | All four are J4's pads (Qwiic, JST SM04B side-entry): the connector mounts at the board edge by design, so its pads sit inside the 0.5 mm edge rule. Land pattern per the SM04B datasheet. |
 | `pth_inside_courtyard` | 1 | J13 pin 10 inside mounting hole H1's courtyard. Both positions are Arduino's — fixed by the UNO Q drill data — and every real UNO shield carries this same adjacency. |
 | `courtyards_overlap` | 12 | 3 are the same UNO form-factor fixture (H1/J13, H2/J4, H3/J1). The other 9 are courtyard-to-courtyard grazes in the deliberately tight power stage (L1 vs C6/C7/C8/C9/D1, D1 vs C2/C3, Q5/D2, R1/R16): bodies clear, conservative courtyards touch. The placement check reports the same set as 13 warnings, 0 errors. |
+
+### Connector-accessibility findings — 2026-09-06
+
+`check_placement.py` was added to the pipeline and run against this board.
+It independently rediscovered **two of the three UNO-fixture adjacencies**
+already in the ledger above, and said something about them the DRC did not:
+
+| Finding | What DRC called it | What the corridor check adds |
+| --- | --- | --- |
+| H3 ∩ J1, 3.0 mm² | `courtyards_overlap` | H3's **screw head** (6 mm, not the 3.2 mm hole) reaches ~1.9 mm into the left pole's wire entry on a KF301 screw terminal — an assembly note, not a graze. Use a countersunk M3. |
+| H2 ∩ J4, 0.5 mm² | `courtyards_overlap` | Corner graze of the Qwiic cable exit; the ribbon leaves the other way. |
+
+Both are Arduino's fixed hole positions against the only free edge, so they
+are unfixable at this outline. Both are declared `accept_blockers` in
+`board.toml` with the reason inline — still measured, still printed as
+`accepted:`, downgraded rather than hidden. The third fixture adjacency
+(H1/J13) involves a stacking header, which mates from above and is
+deliberately not modelled by this check.
 
 ## Open items (blocking netlist, not blocking sign-off)
 

@@ -32,7 +32,7 @@ endif
 RUN := $(if $(HAVE_IMAGE),./run.sh )
 P := python3 scripts/build
 
-.PHONY: doctor build route export check clean setup
+.PHONY: doctor build route export check check-placement clean setup
 
 setup:
 	docker build -t $(IMAGE) \
@@ -60,6 +60,7 @@ build:
 	$(RUN)$(P)/floorplan.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/add_mounting_holes.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/place.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --rounds $(ROUNDS)
+	$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --warn-only
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/fanout.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/add_fiducials.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
@@ -78,8 +79,18 @@ route:
 export:
 	$(RUN)$(P)/export_fab.py --board $(PCB) --config $(CONFIG)
 
-check:
+# Two halves, and only the second one is dependency-free. check_placement
+# reads the BOARD through pcbnew and can name what it found (`R12 pad 2`);
+# validate_gerbers reads the exported bytes as text and cannot, but those are
+# the bytes the fab will plot. A pass in the first and a fail in the second
+# means the export moved something -- which is the whole point of having both.
+check: check-placement
 	@$(RUN)python3 scripts/validate_gerbers.py $(BOARD_DIR)/fab -c $(CONFIG)
+
+# Connector accessibility + copper in keepouts, straight off the board file.
+# Runs warn-only inside `build` (where the board is not final) and hard here.
+check-placement:
+	@$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 
 clean:
 	rm -rf $(BOARD_DIR)/fab $(BOARD_DIR)/build

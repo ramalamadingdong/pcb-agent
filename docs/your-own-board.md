@@ -39,7 +39,8 @@ numbers. Never write a KiCad page coordinate into board.toml.
 | `[parts.<REF>]`, `[[part_rules]]` | make_libs, generate_schematic | symbol + footprint per refdes (rules by prefix for jellybeans, per-ref overrides for everything else) |
 | `[[floorplan.place]]` | floorplan, place | hand placements, locked; see the loop below |
 | `[mounting_holes]`, `[fiducials]` | passes AND checker | positions place them; count/diameter checks them in the gerbers |
-| `[[keepouts]]` | add_keepouts, silk, router passes, checker | one rectangle feeds the rule area, the silk dodge, the router fences and the gerber check |
+| `[[keepouts]]` | add_keepouts, silk, router passes, both checkers | one rectangle feeds the rule area, the silk dodge, the router fences, the board check and the gerber check |
+| `[[connectors]]` | check_placement | which parts you plug into from an EDGE, and how much room the plug and cable need in front. Edge-mating only — a vertical stacking header mates from above and is not modelled |
 | `[[zones.pour]]`, `[layers] planes` | zones, export_dsn, checker | pours; plane layers are routing-banned and gerber-checked for stray tracks |
 | `[nets.power]` | apply_netclasses + checker | patterns pin nets to the power netclass BY NAME; `min_width_mm` is the checker floor; `plane_fed` exempts short pad-escape chains on plane-backed nets |
 | `[[fanout.thermal_vias]]` | fanout | vias at named pads — exposed pads, and any pour island the DRC shows floating |

@@ -36,9 +36,9 @@ end against the example board: netlist → schematic (clean round-trip diff) →
 board → netclasses → floorplan → holes → zones/fanout → freerouting →
 completion → fab export → checker. As of 2026-08-30 the example has passed
 its pre-order gates — **0 unconnected, 0 clearance violations** across 5
-identical DRC runs, `validate_gerbers` 14/0, ERC clean, every residual DRC
-item explained in its `rev-1-plan.md` ledger — but **no physical board has
-been fabricated yet**. Until one comes back and powers on, treat
+identical DRC runs, `validate_gerbers` 14/0, `check_placement` 5/0, ERC
+clean, every residual DRC item explained in its `rev-1-plan.md` ledger — but
+**no physical board has been fabricated yet**. Until one comes back and powers on, treat
 `examples/unoq-power-shield` as a pipeline exercise, not a verified
 reference design.
 
@@ -104,7 +104,7 @@ PCBWay. MIT. This is the install that matters most.
 /new-board     an idea, interviewed into a cited plan and a netlist.csv
 /build         netlist.csv -> schematic -> board -> placement -> zones -> silk
 /route         snapshot -> Freerouting -> DRC x5 -> gerbers
-/check         validate the fab package against board.toml
+/check         validate the board AND the fab package against board.toml
 /doctor        is this machine able to run any of it
 ```
 
@@ -126,6 +126,16 @@ Working now:
 - **`scripts/validate_gerbers.py`** — the level-4 checker. Reads exported
   gerbers and drill files as text. No dependencies, no install, doesn't need
   KiCad. Runs on any fab package from any tool. See below.
+- **`scripts/build/check_placement.py`** — the board-level checker, and the
+  other half of `make check`. Two things the gerber checker structurally
+  cannot see: whether every `[[connectors]]` part can actually be **plugged
+  into** (mating face reaches the outline, corridor for plug and cable clear —
+  mounting holes inflated to the *screw head*, which is the thing actually in
+  the way and which no courtyard in the file describes), and copper in a
+  keepout named by object (`R12 pad 2`, `via GND at 41.20,18.05`) instead of
+  by aperture. Runs in about a second off the board file, so a floorplan
+  mistake surfaces while the floorplan is still what you are editing, not
+  fifteen minutes later in the fab package.
 - **`scripts/doctor.py`** — environment preflight.
 - **`CLAUDE.md`** — the rules. This is what keeps an agent from undoing the
   work: don't edit board files, fixes go in the pipeline, every pass

@@ -67,3 +67,42 @@ y1 = 24.0
 x2 = 30.0
 y2 = 30.0
 min_count = 9
+
+# --------------------------------------------------------------------------
+# Connectors you plug into from a board EDGE. Checked by
+# scripts/build/check_placement.py (`make check-placement`), which measures
+# the gap from the connector's mating face to the outline and sweeps the
+# corridor a plug and its cable need for anything in the way.
+#
+# Only edge-mating parts belong here. A vertical stacking header mates from
+# ABOVE and this check has no model for that — declaring one would measure a
+# corridor nothing uses.
+#
+# Mounting holes in a corridor are inflated to [mounting_holes]
+# head_diameter_mm first: the obstruction is the SCREW HEAD, ~5.5-6 mm on an
+# M3 pan head, and no courtyard in the file describes it.
+#
+# [[connectors]]
+# ref               = "J1"
+# face              = "bottom"  # board-frame edge: left/right/top/bottom, or
+#                               # "auto" to take the nearest one
+# mating_depth_mm   = 8.0       # clear space the plug/boot needs in front
+# edge_offset_mm    = 0.5       # max gap from the mating face to the outline;
+#                               # a negative gap (USB-C overhanging) is fine
+# lateral_margin_mm = 0.5       # widen the corridor each side (shell, boot)
+# keep_clear_mm     = 0.0       # extra on-board clearance behind the face
+# accept_blockers   = ["H3"]    # refs in the corridor you have decided to
+#                               # live with (a mounting hole at a fixed
+#                               # position, say). Still measured, still
+#                               # printed as "accepted:" — downgraded, never
+#                               # hidden. Naming a ref that ISN'T in the
+#                               # corridor is a FAIL: a stale acceptance is a
+#                               # check that passes forever.
+
+# [mounting_holes]
+# head_diameter_mm = 6.0        # optional, default 6.0
+
+# A keepout bans pads too, as far as this checker is concerned — KiCad DRC
+# does not, so nothing else would ever catch one. Opt out per keepout:
+# [[keepouts]]
+# allow_pads = true
