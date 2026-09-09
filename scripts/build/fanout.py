@@ -107,6 +107,7 @@ from __future__ import annotations
 import math
 import sys
 from dataclasses import dataclass, field
+from fnmatch import fnmatch
 from pathlib import Path
 
 from kicad_tools.pcb.editor import PCBEditor
@@ -434,7 +435,13 @@ def derive_target(pitch: float, fcfg: dict, clearance: float) -> tuple[Target | 
     annular_min = float(fcfg.get("min_annular_ring_mm", 0.10))
 
     via_max = 2.0 * (pitch - clearance - track / 2.0)
-    via = min(via_pref, math.floor(via_max * 100) / 100.0)
+    # Round to the micron BEFORE flooring to the 10-micron grid. At a 0.5 mm
+    # pitch with 0.15 clearance and a 0.2 track, via_max is 0.49999999999999994
+    # in binary, floor() makes that 0.49, and a min_via_size_mm of exactly 0.50
+    # -- the board's own DRC floor -- refuses the part with "give this part an
+    # explicit [[fanout.target]]". Three fine-pitch packages silently lost
+    # their fanout to one ulp.
+    via = min(via_pref, math.floor(round(via_max, 6) * 100 + 1e-9) / 100.0)
     if via < via_min:
         return None, (
             f"pitch {pitch:.3f} mm allows only a {via_max:.3f} mm via at "
@@ -541,6 +548,20 @@ def main() -> int:
     cfg = _lib.load_config(args.config)
     fcfg = cfg.get("fanout", {}) or {}
     clearance = float(fcfg.get("clearance_mm", CLEARANCE_DEFAULT))
+
+    # An escape stub on a POWER pad is laid at the power width, not the
+    # target's signal width. At 0.20 mm every stub on +1V8, +3V3, +5V_SYS and
+    # VBAT_PROT failed validate_gerbers' power/width check straight off the
+    # plotted bytes, and a GND chain ran past the plane-fed exemption. The
+    # stub leaves the pad along its long axis, away from the neighbours, so
+    # the extra width costs nothing in the ring model -- half_w below is the
+    # per-pad value, so the blocker sees the true copper.
+    power_patterns = list((cfg.get("nets", {}).get("power", {}) or {})
+                          .get("patterns") or [])
+    power_w = float((cfg.get("route", {}) or {}).get("power_track_width_mm") or 0.0)
+
+    def is_power(net_name: str) -> bool:
+        return bool(net_name) and any(fnmatch(net_name, p) for p in power_patterns)
     max_ring_steps = int(fcfg.get("max_ring_steps", MAX_RING_STEPS_DEFAULT))
     eps = float(fcfg.get("eps_mm", EPS_DEFAULT))
 
@@ -634,6 +655,9 @@ def main() -> int:
 
             pad_xy = (round(fx + px, 4), round(fy + py, 4))
             step = spec.via_size + clearance
+            stub_w = max(spec.track_width, power_w) if is_power(pad.net_name) \
+                else spec.track_width
+            half_w = stub_w / 2.0
 
             placed = False
             reason = "no candidate"
@@ -659,7 +683,7 @@ def main() -> int:
                 ed.add_track(
                     pad.net_name,
                     [pad_xy, via_xy],
-                    width=spec.track_width,
+                    width=stub_w,
                     layer=esc_layer,
                 )
                 obstacles.commit(
