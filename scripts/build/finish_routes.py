@@ -259,7 +259,16 @@ def main() -> int:
                 except TypeError:
                     lc = p.GetLocalClearance(None)
                 extra = int(lc or 0)
-            pads.append((pos.x, pos.y, sz.x // 2 + mm(0.1), sz.y // 2 + mm(0.1),
+            # GetSize() is the UNROTATED pad. A rectangular pad on a part at
+            # 90/270 has its long axis the other way, and applying the box in
+            # the wrong axis is how via_site_ok cleared a via sitting ON C38
+            # pad 2 (rot 90) and another ON J8 pad 5 (rot 270): five shorts,
+            # five mask bridges and three hole-clearance errors from two
+            # escape vias. post_route_fix already swaps the axes; this is the
+            # same rule, one pass along.
+            ang = abs(p.GetOrientationDegrees()) % 180
+            hx, hy = (sz.y // 2, sz.x // 2) if abs(ang - 90) < 1 else (sz.x // 2, sz.y // 2)
+            pads.append((pos.x, pos.y, hx + mm(0.1), hy + mm(0.1),
                          p.GetNetCode(), lay, extra))
 
     # ---- step 0: strip router copper violating those invisible rings ---------

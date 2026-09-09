@@ -106,7 +106,19 @@ def main() -> int:
         jdir = out_dir / "jlcpcb"
         jdir.mkdir(exist_ok=True)
         rot180 = set(jlc.get("rot180", []))
-        rows = list(csv.DictReader(open(cfg_dir / jlc["bom_csv"], encoding="utf-8")))
+        bom_src = cfg_dir / jlc["bom_csv"]
+        if not bom_src.is_file():
+            # The gerbers and drill files above are already on disk and are
+            # valid without this; only the assembly package is missing. Say
+            # exactly that instead of a FileNotFoundError traceback, and still
+            # exit non-zero -- [fab.jlc] declares an assembly order, and an
+            # assembly order with no BOM is not a package a fab will build.
+            _lib.fail(f"[fab.jlc] bom_csv names {bom_src.name}, which does not exist. "
+                 f"Gerbers/drill are exported to {out_dir}; the JLC BOM/CPL are "
+                 f"not. Build {bom_src.name} (Comment, Designator, Footprint, "
+                 f"LCSC Part #) from sourced part numbers -- the bom skill -- "
+                 f"or drop the [fab.jlc] block until parts are chosen.")
+        rows = list(csv.DictReader(open(bom_src, encoding="utf-8")))
         bom_refs: set[str] = set()
         bom_out = jdir / f"{name}_BOM.csv"
         with open(bom_out, "w", newline="", encoding="utf-8") as fh:

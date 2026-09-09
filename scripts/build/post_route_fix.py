@@ -843,7 +843,15 @@ def main() -> int:
                     # millimetre away. Same offset-and-stub shape stage (a)
                     # above uses for floating clusters.
                     if not placed:
-                        for ring in POUR_VIA_RINGS_MM[1:]:
+                        # Reach further than stage (a)'s 3 mm. The islands that
+                        # survive to here are the crowded ones -- fine-pitch
+                        # power-corner pads, and U7 inside baro_island where
+                        # the plane is carved out for 5 mm in every direction
+                        # by design (no via, no pour under the barometer). A
+                        # 6-8 mm F.Cu stub out of that island to a via on the
+                        # plane is exactly the connection the keepout intends;
+                        # path_ok still refuses anything that grazes.
+                        for ring in list(POUR_VIA_RINGS_MM[1:]) + [4.0, 5.0, 6.0, 7.0, 8.0]:
                             for cx, cy in inside:
                                 for q in range(24):
                                     ox = FM(ring) * math.cos(2 * math.pi * q / 24)
