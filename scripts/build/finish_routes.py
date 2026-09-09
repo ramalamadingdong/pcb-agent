@@ -615,7 +615,16 @@ def main() -> int:
                     if e[2]:
                         add_via(e[0], e[1], net)
                         if e[3]:
-                            add_track(e[3][0], e[3][1], e[0], e[1], net, fcu, W_SIG)
+                            # `w`, not W_SIG. This is the pad-to-via escape
+                            # stub, and laying it at the SIGNAL width put
+                            # 0.200 mm copper on +1V8, +5V_ARM1/3/4,
+                            # +5V_EVK_SW and +5V_GPS -- which validate_gerbers
+                            # reads straight off the plotted bytes and fails as
+                            # "power/width below 0.3mm". It also contradicted
+                            # this module's own docstring, which promises
+                            # power_track_width_mm for nets matching
+                            # [nets.power] patterns.
+                            add_track(e[3][0], e[3][1], e[0], e[1], net, fcu, w)
                 for q in range(len(apts) - 1):
                     add_track(*apts[q], *apts[q + 1], net, layer, w)
                 length = sum(math.hypot(tm(apts[q + 1][0] - apts[q][0]),

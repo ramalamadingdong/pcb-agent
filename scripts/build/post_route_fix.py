@@ -824,22 +824,49 @@ def main() -> int:
                                  key=lambda v: abs(v - (x0 + x1) // 2))
                     cys = sorted(range(y0 + step, y1, step),
                                  key=lambda v: abs(v - (y0 + y1) // 2))
+                    inside = [(cx, cy) for cx in cxs[:24] for cy in cys[:24]
+                              if poly.Contains(pcbnew.VECTOR2I(int(cx), int(cy)), i)]
                     placed = False
-                    for cx in cxs[:24]:
-                        for cy in cys[:24]:
-                            pt = pcbnew.VECTOR2I(int(cx), int(cy))
-                            if not poly.Contains(pt, i):
-                                continue
-                            if not covered_ring(zl, plane_layer, cx, cy):
-                                continue
-                            if not via_ok(cx, cy, nc):
-                                continue
-                            add_via(cx, cy, net)
-                            island_vias += 1
-                            placed = True
-                            break
-                        if placed:
-                            break
+                    # (a) a via wholly inside the island
+                    for cx, cy in inside:
+                        if not covered_ring(zl, plane_layer, cx, cy):
+                            continue
+                        if not via_ok(cx, cy, nc):
+                            continue
+                        add_via(cx, cy, net)
+                        island_vias += 1
+                        placed = True
+                        break
+                    # (b) a via OUTSIDE it, reached by a short stub. A 1.1 x 0.9
+                    # mm pocket holding a pad has no room for a 0.6 mm via plus
+                    # clearance, but the main pour is usually a fraction of a
+                    # millimetre away. Same offset-and-stub shape stage (a)
+                    # above uses for floating clusters.
+                    if not placed:
+                        for ring in POUR_VIA_RINGS_MM[1:]:
+                            for cx, cy in inside:
+                                for q in range(24):
+                                    ox = FM(ring) * math.cos(2 * math.pi * q / 24)
+                                    oy = FM(ring) * math.sin(2 * math.pi * q / 24)
+                                    x, y = int(cx + ox), int(cy + oy)
+                                    if not covered_ring(zl, plane_layer, x, y):
+                                        continue
+                                    if not via_ok(x, y, nc):
+                                        continue
+                                    stub = [(cx, cy), (x, y)]
+                                    if not path_ok(stub, nc, layer,
+                                                   FM(P["pour_stub_width_mm"])):
+                                        continue
+                                    add_via(x, y, net)
+                                    add_track(cx, cy, x, y, net, layer,
+                                              FM(P["pour_stub_width_mm"]))
+                                    island_vias += 1
+                                    placed = True
+                                    break
+                                if placed:
+                                    break
+                            if placed:
+                                break
                     if not placed:
                         island_skipped += 1
                         log(f"{netname}: island on {b.GetLayerName(layer)} at "

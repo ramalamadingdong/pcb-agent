@@ -45,6 +45,8 @@ from pathlib import Path
 
 import pcbnew
 
+from fnmatch import fnmatch
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _lib import assert_net_table, emit, fail, load_config, pass_parser  # noqa: E402
 
@@ -133,6 +135,15 @@ def main() -> int:
     # them around whatever copper exists — so remove them from the
     # IN-MEMORY board only (never saved). Pours on declared plane layers
     # stay: they are the (plane) semantics the router must respect.
+    # Nets that own copper the router does not lay. Collected BEFORE the
+    # surface pours are withheld below, or the set comes back short.
+    pour_nets = {z.GetNetname() for z in b.Zones()
+                 if not z.GetIsRuleArea() and z.GetNetname()}
+    pour_nets |= {p.get("net") for p in (cfg.get("route", {}).get("pours") or [])}
+    pour_nets |= {z.get("net") for z in
+                  ((cfg.get("zones") or {}).get("pour") or [])}
+    pour_nets.discard(None)
+
     plane_ids = {b.GetLayerID(dsn_layer(n)) for n in planes}
     surface_pours = [
         z for z in b.Zones()
@@ -195,34 +206,93 @@ def main() -> int:
     #
     # A footprint whose pads carry their own overrides is skipped entirely, for
     # the same reason: the keepouts already cover it.
-    local_um = 0.0
-    strictest = None
+    strict = {}          # netname -> (clearance_um, ref that demands it)
     for fp in b.GetFootprints():
         if any(pad_local_clearance(p) for p in fp.Pads()):
             continue
         value = footprint_local_clearance(fp)
-        if value and value / 1000.0 > local_um:
-            local_um, strictest = value / 1000.0, fp.GetReference()
-    if local_um:
-        floor_um = local_um + 10          # same 10 um router margin
-        raised = []
+        if not value:
+            continue
+        want = value / 1000.0 + 10        # same 10 um router margin
+        for p in fp.Pads():
+            nm = p.GetNetname()
+            # A net that owns a pour is fed by copper the router does not lay,
+            # and it reaches the whole board -- widening it widens everything.
+            if not nm or nm in pour_nets:
+                continue
+            if want > strict.get(nm, (0, None))[0]:
+                strict[nm] = (want, fp.GetReference())
 
-        def _floor_clearance(m):
-            have = float(m.group(1))
-            if have >= floor_um:
-                return m.group(0)
-            raised.append(have)
-            return f"(clearance {floor_um:.1f})"
+    if strict:
+        # Put just these nets in their own class. Flooring the GENERAL rule was
+        # the obvious move and it is wrong: measured, 0.16 -> 0.21 mm board-wide
+        # bought U10's ten clearance errors and cost twelve unconnected nets,
+        # because a 0.5 mm-pitch escape that fits at 0.16 does not fit at 0.21.
+        # These nets are local to the footprint that demands the clearance, so
+        # a class of their own costs the rest of the board nothing.
+        want_um = max(v for v, _r in strict.values())
+        names = sorted(strict)
+        pat = re.compile(r"\((class\s+\S+)((?:\s+(?:\"[^\"]*\"|[^\s()\"]+))*)",
+                         re.S)
+        moved = []
 
-        text, _n = re.subn(r"\(clearance\s+([\d.]+)\s*\)", _floor_clearance, text)
-        if raised:
-            log(f"floored {len(raised)} DSN clearance rule(s) "
-                f"{sorted(set(raised))} -> {floor_um:.1f} um: {strictest}'s "
-                f"footprint carries a {local_um / 1000:.3f} mm local clearance "
-                f"that Specctra cannot express per-object")
-        else:
-            log(f"local clearance {local_um / 1000:.3f} mm ({strictest}) already "
-                f"covered by the DSN rules")
+        def _strip(m):
+            head, body = m.group(1), m.group(2)
+            kept = []
+            for tok in body.split():
+                if tok.strip('"') in strict:
+                    moved.append(tok.strip('"'))
+                    continue
+                kept.append(tok)
+            return "(" + head + ("\n      " + " ".join(kept) if kept else "")
+
+        text = pat.sub(_strip, text, count=0)
+        if moved:
+            # Carry the padstack the other classes use. Without a (circuit
+            # (use_via ...)) freerouting has no via to place for these nets,
+            # and SW is the buck's switching node -- it needs them.
+            uv = re.search(r"\(circuit\s*\(use_via\s+([^\s)]+)\s*\)\s*\)", text)
+            circuit = (f"\n      (circuit (use_via {uv.group(1)}))"
+                       if uv else "")
+            # The class needs the WIDEST width any of its nets is entitled to,
+            # not whatever width happened to appear first in the file. Copying
+            # the first (rule (width ...)) picked up kicad_default's 250 um and
+            # routed SW -- the buck's switching node, and a [nets.power] net --
+            # at 0.25 mm, which validate_gerbers fails as "power/width below
+            # 0.3mm". Widening a short local signal net costs nothing;
+            # narrowing a power net is a fab-level defect.
+            pwr_pats = list((cfg.get("nets", {}).get("power", {})
+                             or {}).get("patterns") or [])
+            route_cfg = cfg.get("route", {}) or {}
+            w_sig = float(route_cfg.get("track_width_mm") or 0.2) * 1000
+            w_pwr = float(route_cfg.get("power_track_width_mm") or 0.3) * 1000
+            w = max(w_pwr if any(fnmatch(n, p) for p in pwr_pats) else w_sig
+                    for n in names)
+            w = f"{w:.0f}"
+            block = ("    (class local_clearance\n      "
+                     + " ".join(names)
+                     + circuit
+                     + f"\n      (rule (width {w}) (clearance "
+                     + f"{want_um:.1f}))\n    )\n")
+            # append inside (network ...), just before its closing paren
+            ni = text.find("(network")
+            depth, i = 0, ni
+            while i < len(text):
+                if text[i] == "(":
+                    depth += 1
+                elif text[i] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                i += 1
+            text = text[:i] + block + "  " + text[i:]
+            demanders = sorted({r for _v, r in strict.values()})
+            log(f"moved {len(moved)} net(s) into DSN class 'local_clearance' at "
+                f"{want_um:.1f} um for {demanders}: their footprint carries a "
+                f"local clearance Specctra cannot express per-object. The "
+                f"general rule is left alone -- flooring it costs fine-pitch "
+                f"escapes elsewhere on the board.")
+            log(f"  nets: {', '.join(names)}")
 
     if n_cls:
         log(f"sanitised {n_cls} class name(s) (commas -> _)")
