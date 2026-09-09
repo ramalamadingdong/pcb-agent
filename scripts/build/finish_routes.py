@@ -143,6 +143,44 @@ def main() -> int:
     def mm(v):
         return pcbnew.FromMM(v)
 
+    def _seg_box_dist(ax, ay, bx, by, x1, y1, x2, y2):
+        """Minimum distance from segment AB to the axis-aligned box; 0 if they
+        touch or cross. Exact: for a segment and a convex box the minimum is at
+        a box corner or a segment end unless the two intersect."""
+        def pt_seg(px, py):
+            dx, dy = bx - ax, by - ay
+            ll = dx * dx + dy * dy
+            tt = 0 if ll == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / ll))
+            return math.hypot(px - (ax + tt * dx), py - (ay + tt * dy))
+
+        def pt_box(px, py):
+            return math.hypot(max(x1 - px, 0, px - x2), max(y1 - py, 0, py - y2))
+
+        def inside(px, py):
+            return x1 <= px <= x2 and y1 <= py <= y2
+
+        if inside(ax, ay) or inside(bx, by):
+            return 0.0
+        # segment crossing an edge of the box: cheap Liang-Barsky clip test
+        dx, dy = bx - ax, by - ay
+        t0, t1 = 0.0, 1.0
+        for p, q in ((-dx, ax - x1), (dx, x2 - ax), (-dy, ay - y1), (dy, y2 - ay)):
+            if p == 0:
+                if q < 0:
+                    break
+                continue
+            r = q / p
+            if p < 0:
+                t0 = max(t0, r)
+            else:
+                t1 = min(t1, r)
+            if t0 > t1:
+                break
+        else:
+            return 0.0
+        return min(pt_seg(x1, y1), pt_seg(x2, y1), pt_seg(x1, y2), pt_seg(x2, y2),
+                   pt_box(ax, ay), pt_box(bx, by))
+
     def tm(v):
         return pcbnew.ToMM(int(v))
 
@@ -243,6 +281,8 @@ def main() -> int:
     # the DSN (Specctra's clearance model is per-netclass) — the same pads
     # export_dsn.py fences off with injected keepouts.
     pads = []      # (x, y, hx, hy, net, layers:set, extra)
+    pad_labels = []   # "REF.pad", parallel to pads, for the graze log
+    pad_objs = []     # the PAD itself, parallel to pads, for exact-shape checks
     for fp in b.GetFootprints():
         for p in fp.Pads():
             pos = p.GetPosition()
@@ -273,12 +313,22 @@ def main() -> int:
             # than the peg and landed 0.021mm from it. The bounding box is the
             # copper for every shape, rotated or not, so use that. It is
             # conservative on a 45-degree pad; that is the right direction.
+            #
+            # The bounding box ALONE. A first version took max(bbox, GetSize())
+            # per axis as a belt-and-braces guard, and that put the rotation bug
+            # straight back in the other axis: a rotated MSOP pad's sz.x is its
+            # unrotated 1.5mm length, so the box came out 3.0mm wide for a pad
+            # 0.35mm wide, and every track legitimately passing the pad row
+            # read as inside it by up to 0.35mm. Measured: 89 segments stripped,
+            # 62 nets unconnected.
             bb = p.GetBoundingBox()
-            hx = max(bb.GetWidth() // 2, sz.x // 2)
-            hy = max(bb.GetHeight() // 2, sz.y // 2)
+            hx = bb.GetWidth() // 2
+            hy = bb.GetHeight() // 2
             cx, cy = bb.GetCenter().x, bb.GetCenter().y
             pads.append((cx, cy, hx + mm(0.1), hy + mm(0.1),
                          p.GetNetCode(), lay, extra))
+            pad_labels.append(f"{fp.GetReference()}.{p.GetPadName()}")
+            pad_objs.append(p)
 
     # ---- step 0: strip router copper violating those invisible rings ---------
     ringed = [(x, y, max(hx, hy), lay, extra) for x, y, hx, hy, net, lay, extra in pads
@@ -327,18 +377,69 @@ def main() -> int:
             s, e = t.GetStart(), t.GetEnd()
             seg_snap.append((t, s.x, s.y, e.x, e.y, t.GetWidth() // 2,
                              t.GetNetCode()))
+    # Foreign PADS too, the same way: the next run's grazes were CAN2_SPLIT
+    # against D11 pad 2 and +5V_ARM4 against U17 pad 5, both under 0.15 mm.
+    # `pads` carries a +0.1 mm pad here already, so the threshold is lowered
+    # by that much -- comparing the padded box against CLEAR would strip
+    # legitimate copper at 0.2 mm.
+    pad_snap = [(px, py, hx - mm(0.1), hy - mm(0.1), pnet, lay, pad_labels[i], pad_objs[i])
+                for i, (px, py, hx, hy, pnet, lay, _extra) in enumerate(pads)
+                if pnet > 0]
     grazed = []
+    detail = []      # (d_mm, description) for the worst few, so a wrong
+                     # geometry model names itself instead of hiding in a count
     for t, x0, y0, x1, y1, hw, nc in seg_snap:
         dx, dy = x1 - x0, y1 - y0
         ll = dx * dx + dy * dy
+        hit = None
         for vx, vy, vr, vnc in via_snap:
             if vnc == nc:
                 continue
             tt = 0 if ll == 0 else max(0, min(1, ((vx - x0) * dx + (vy - y0) * dy) / ll))
             d = math.hypot(vx - (x0 + tt * dx), vy - (y0 + tt * dy)) - hw - vr
             if d < mm(CLEAR):
-                grazed.append((t, tm(d)))
+                hit = d
+                detail.append((tm(d), f"{b.FindNet(nc).GetNetname()} seg on "
+                               f"{b.GetLayerName(t.GetLayer())} vs via "
+                               f"[{b.FindNet(vnc).GetNetname()}]"))
                 break
+        if hit is None:
+            lay_t = t.GetLayer()
+            for px, py, hx, hy, pnet, lay, label, pad_obj in pad_snap:
+                if pnet == nc or lay_t not in lay:
+                    continue
+                # Exact segment-to-box distance. The first version projected
+                # the pad CENTRE onto the segment and took a Chebyshev
+                # distance from there, which is fine head-on and wrong by up
+                # to a factor of two on a 45-degree approach: 74 power tracks
+                # at a legal 0.15+ mm from 0402 GND pads read as 0.05 mm and
+                # were stripped. Between a segment and an axis-aligned box the
+                # minimum is attained at a corner of the box or an end of the
+                # segment, unless they intersect, so that is what is measured.
+                d = _seg_box_dist(x0, y0, x1, y1, px - hx, py - hy, px + hx, py + hy) - hw
+                if d >= mm(CLEAR):
+                    continue
+                # The box is a PREFILTER. A roundrect pad has no corner where
+                # its box does, and on a diagonal approach that is worth
+                # r*(sqrt(2)-1): C13.2 measured 0.074 mm to the box corner and
+                # 0.159 mm to the copper, which is why DRC passes it and a box
+                # test does not. Confirm against pcbnew's own effective shape
+                # -- the geometry DRC uses -- so this pass and DRC agree by
+                # construction. Only the few box-hits pay for the SWIG call.
+                seg_shape = pcbnew.SHAPE_SEGMENT(pcbnew.VECTOR2I(int(x0), int(y0)),
+                                                 pcbnew.VECTOR2I(int(x1), int(y1)),
+                                                 int(2 * hw))
+                if not pad_obj.GetEffectiveShape(lay_t).Collide(seg_shape, int(mm(CLEAR))):
+                    continue
+                hit = d
+                detail.append((tm(d), f"{b.FindNet(nc).GetNetname()} seg on "
+                               f"{b.GetLayerName(lay_t)} {tm(x0):.2f},{tm(y0):.2f}->"
+                               f"{tm(x1):.2f},{tm(y1):.2f} w{tm(2 * hw):.2f} vs pad "
+                               f"{label} [{b.FindNet(pnet).GetNetname()}] box "
+                               f"{tm(2 * hx):.2f}x{tm(2 * hy):.2f} at {tm(px):.2f},{tm(py):.2f}"))
+                break
+        if hit is not None:
+            grazed.append((t, tm(hit)))
     kill += [t for t, _d in grazed]
 
     for t in kill:
@@ -346,9 +447,11 @@ def main() -> int:
     if n_ring:
         log(f"  stripped {n_ring} router item(s) inside clearance-override pad rings")
     if grazed:
-        log(f"  stripped {len(grazed)} router segment(s) grazing a foreign via "
+        log(f"  stripped {len(grazed)} router segment(s) grazing a foreign via/pad "
             f"(worst {min(d for _t, d in grazed):.3f} mm vs {CLEAR} mm); "
             f"their nets re-enter the completion set")
+        for d, desc in sorted(detail)[:6]:
+            log(f"      {d:+.3f} mm  {desc}")
 
     vias = []      # (x, y, r, net)
     segs = []      # (x0, y0, x1, y1, halfw, net, layer)
@@ -513,15 +616,29 @@ def main() -> int:
                 return False
         return True
 
-    def stub_ok(x0, y0, x1, y1, nc):
-        for px, py, hx, hy, net, lay, extra in pads:
+    def stub_ok(x0, y0, x1, y1, nc, hw=None):
+        # hw: the stub's real half-width. It used to be a hardcoded 0.1 while
+        # a power-net stub is 0.3 wide, so a +5V_ARM4 stub cleared U17.5 by
+        # 0.187 mm in this model and 0.137 mm on the board. Pads are checked
+        # against pcbnew's effective shape after a cheap box prefilter, same
+        # as the graze strip in step 0b: a 30-degree stub past a roundrect
+        # pad is exactly the case a box corner gets wrong.
+        if hw is None:
+            hw = mm(0.1)
+        seg_shape = None
+        for i, (px, py, hx, hy, net, lay, extra) in enumerate(pads):
             if (net == nc and not extra) or fcu not in lay:
                 continue
-            dx, dy = x1 - x0, y1 - y0
-            ll = dx * dx + dy * dy
-            tt = 0 if ll == 0 else max(0, min(1, ((px - x0) * dx + (py - y0) * dy) / ll))
-            d = max(abs(px - (x0 + tt * dx)) - hx, abs(py - (y0 + tt * dy)) - hy)
-            if d - mm(0.1) < mm(CLEAR) + extra:
+            d = _seg_box_dist(x0, y0, x1, y1, px - hx, py - hy, px + hx, py + hy)
+            if d - hw >= mm(CLEAR) + extra:
+                continue
+            if extra:
+                return False          # clearance-override ring: the box IS the rule
+            if seg_shape is None:
+                seg_shape = pcbnew.SHAPE_SEGMENT(pcbnew.VECTOR2I(int(x0), int(y0)),
+                                                 pcbnew.VECTOR2I(int(x1), int(y1)),
+                                                 int(2 * hw))
+            if pad_objs[i].GetEffectiveShape(fcu).Collide(seg_shape, int(mm(CLEAR))):
                 return False
         for x0s, y0s, x1s, y1s, hw, net, lay in segs:
             if net == nc or lay != fcu:
@@ -538,7 +655,7 @@ def main() -> int:
                     return False
         return True
 
-    def entry_site(cluster, nc, layer):
+    def entry_site(cluster, nc, layer, stub_hw=None):
         """(x, y, new_via?, stub) giving this cluster presence on `layer`."""
         for x, y, kind, lay, r in cluster:
             if kind == "via" or (kind == "seg" and layer in lay):
@@ -550,7 +667,7 @@ def main() -> int:
                 for q in range(12):
                     x = ax + mm(ring) * math.cos(2 * math.pi * q / 12)
                     y = ay + mm(ring) * math.sin(2 * math.pi * q / 12)
-                    if via_site_ok(x, y, nc) and stub_ok(ax, ay, x, y, nc):
+                    if via_site_ok(x, y, nc) and stub_ok(ax, ay, x, y, nc, stub_hw):
                         return (int(x), int(y), True, (ax, ay))
         return None
 
@@ -658,8 +775,8 @@ def main() -> int:
             main_c, minor = cl[0], cl[-1]
             done = False
             for layer, lname in link_layers:
-                e1 = entry_site(minor, nc, layer)
-                e2 = entry_site(main_c, nc, layer)
+                e1 = entry_site(minor, nc, layer, mm(w) / 2)
+                e2 = entry_site(main_c, nc, layer, mm(w) / 2)
                 if not e1 or not e2:
                     continue
                 g = get_grid(layer, w)
