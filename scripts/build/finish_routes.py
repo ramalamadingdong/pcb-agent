@@ -505,7 +505,15 @@ def main() -> int:
 
     def build_grid(layer, trace_half_mm):
         g = blank()
-        infl = trace_half_mm + CLEAR
+        # Plus half a cell. The A* walks cell CENTRES, and an obstacle is
+        # marked only where a centre falls inside it, so a path can hug a
+        # via by up to half a cell -- GRID/2 = 0.125 mm at the default 0.25
+        # -- closer than the inflated radius says. Measured: a completion
+        # link on In2 landed 0.1275 mm from a fixed fanout via against a
+        # 0.15 mm rule, the last DRC error on the board. Every other check
+        # in this pass is exact; the grid is the one place quantisation can
+        # leak, so it carries the margin.
+        infl = trace_half_mm + CLEAR + GRID * 0.5
         for left, right, top, bottom, notracks, _novias, lys in boxes:
             if not notracks or layer not in lys:
                 continue
