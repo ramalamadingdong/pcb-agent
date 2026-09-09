@@ -266,9 +266,18 @@ def main() -> int:
             # five mask bridges and three hole-clearance errors from two
             # escape vias. post_route_fix already swaps the axes; this is the
             # same rule, one pass along.
-            ang = abs(p.GetOrientationDegrees()) % 180
-            hx, hy = (sz.y // 2, sz.x // 2) if abs(ang - 90) < 1 else (sz.x // 2, sz.y // 2)
-            pads.append((pos.x, pos.y, hx + mm(0.1), hy + mm(0.1),
+            #
+            # And GetSize() is the ANCHOR of a custom-shaped pad, not its
+            # copper: the JST-GH mounting-peg pads are drawn from primitives,
+            # so a 2.0mm entry_site stub was cleared against a box far smaller
+            # than the peg and landed 0.021mm from it. The bounding box is the
+            # copper for every shape, rotated or not, so use that. It is
+            # conservative on a 45-degree pad; that is the right direction.
+            bb = p.GetBoundingBox()
+            hx = max(bb.GetWidth() // 2, sz.x // 2)
+            hy = max(bb.GetHeight() // 2, sz.y // 2)
+            cx, cy = bb.GetCenter().x, bb.GetCenter().y
+            pads.append((cx, cy, hx + mm(0.1), hy + mm(0.1),
                          p.GetNetCode(), lay, extra))
 
     # ---- step 0: strip router copper violating those invisible rings ---------
