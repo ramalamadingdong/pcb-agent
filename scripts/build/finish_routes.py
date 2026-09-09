@@ -305,10 +305,50 @@ def main() -> int:
                 if d < pr + extra + hw:
                     kill.append(t)
                     break
+    n_ring = len(kill)
+
+    # ---- step 0b: strip router segments that graze a foreign via -------------
+    # Freerouting lays the odd track 20-90 um closer to a PRE-PLACED via (a
+    # fanout escape, a stitching via) than its own rule, and which net it
+    # picks moves run to run: CAN4_H, then EVK_5V_IN, then EN_BUCK. A nudge
+    # tool cannot fix it -- the shortfall exceeds the nudge budget and the
+    # via is fixed by design -- but this pass can: the segment goes, the net
+    # falls into the completion set below, and the A* re-lays it through
+    # path_ok at the real clearance. Deterministic, and it uses copper this
+    # pass already knows how to place. Collected BEFORE any Remove(), like the
+    # ring strip above: the wrappers go stale after the first one.
+    via_snap = []
+    seg_snap = []
+    for t in b.GetTracks():
+        if t.Type() == pcbnew.PCB_VIA_T:
+            p = t.GetPosition()
+            via_snap.append((p.x, p.y, via_radius(t), t.GetNetCode()))
+        elif id(t) not in {id(k) for k in kill}:
+            s, e = t.GetStart(), t.GetEnd()
+            seg_snap.append((t, s.x, s.y, e.x, e.y, t.GetWidth() // 2,
+                             t.GetNetCode()))
+    grazed = []
+    for t, x0, y0, x1, y1, hw, nc in seg_snap:
+        dx, dy = x1 - x0, y1 - y0
+        ll = dx * dx + dy * dy
+        for vx, vy, vr, vnc in via_snap:
+            if vnc == nc:
+                continue
+            tt = 0 if ll == 0 else max(0, min(1, ((vx - x0) * dx + (vy - y0) * dy) / ll))
+            d = math.hypot(vx - (x0 + tt * dx), vy - (y0 + tt * dy)) - hw - vr
+            if d < mm(CLEAR):
+                grazed.append((t, tm(d)))
+                break
+    kill += [t for t, _d in grazed]
+
     for t in kill:
         b.Remove(t)
-    if kill:
-        log(f"  stripped {len(kill)} router item(s) inside clearance-override pad rings")
+    if n_ring:
+        log(f"  stripped {n_ring} router item(s) inside clearance-override pad rings")
+    if grazed:
+        log(f"  stripped {len(grazed)} router segment(s) grazing a foreign via "
+            f"(worst {min(d for _t, d in grazed):.3f} mm vs {CLEAR} mm); "
+            f"their nets re-enter the completion set")
 
     vias = []      # (x, y, r, net)
     segs = []      # (x0, y0, x1, y1, halfw, net, layer)
