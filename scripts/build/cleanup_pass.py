@@ -26,7 +26,32 @@ This pass:
        - a segment is dead if either endpoint touches nothing (no pad, no
          via, no other same-net track at that end)
      repeated to fixpoint so chains collapse from the tail inward.
-  4. refills zones + saves.
+  4. removes everything condemned in one pass, then refills zones + saves.
+
+ONE READ, ONE REMOVAL PASS — and it is not a style preference
+------------------------------------------------------------
+`b.Remove()` detaches an item from the board's track deque and hands its
+ownership to Python.  A `b.GetTracks()` AFTER that comes back, eventually, as a
+bare SwigPyObject with no `__iter__`, and the process then dies with SIGSEGV
+during interpreter teardown.  It survives the first call or two and fails on a
+later one, so it reads as flaky rather than as the container corruption it is.
+
+This pass used to remove duplicates immediately and then re-enumerate the board
+once per fixpoint round.  On a 1300-track board that was 240 removals followed
+by a third `GetTracks()`, which crashed — and because the crash landed before
+`SaveBoard`, the pass was all-or-nothing: the dedupe, the retag and the whole
+prune were discarded, and `route.py` aborted at stage 6/7 before DRC ever ran.
+
+So the board is read exactly once, up front; every stage decides from plain
+tuples keyed by `id()` of the snapshot's proxies; and the single mutation runs
+at the very end, after which nothing reads the board through pcbnew again.  The
+fixpoint is equivalent to re-reading a board with the condemned items gone,
+because a survivor's geometry does not change when a neighbour is deleted.
+
+`add_keepouts.py` ("segfaults hard") and `zones.py` carry the same warning for
+the footprint and zone containers.  `finish_routes.py` and `post_route_fix.py`
+still re-enumerate after their own removals; they get away with it because they
+remove far fewer items.
 
 Never prunes pour nets: a pour-net via legitimately "dangles" into a plane.
 Verify with DRC afterwards (sampled — DRC is nondeterministic).
@@ -142,48 +167,114 @@ def main() -> int:
         if net is not None:
             pour_netcodes.add(net.GetNetCode())
 
-    # ---- 1. exact duplicates (segments AND co-located vias) -----------------
-    seen, dups, ndup_v = set(), [], 0
+    # ---- 0. ONE snapshot of every track, taken before any mutation ----------
+    # b.Remove() detaches an item from the board's std::deque AND flips its
+    # ownership to Python. That leaves the wrapper behind Tracks() stale: a
+    # LATER b.GetTracks() hands back a bare SwigPyObject with no __iter__, and
+    # the interpreter then segfaults at teardown walking the damaged
+    # container. It survives one or two calls and dies on a later one, which
+    # is why this read as intermittent.
+    #
+    # So: read the board exactly once, decide everything from plain tuples,
+    # and defer every removal to a single pass at the end. No pcbnew accessor
+    # is called after the first Remove(). Same hazard as add_keepouts.py:141
+    # ("segfaults hard") and zones.py:104, one container along.
+    #
+    # `tracks` also holds the only strong references to these proxies, which
+    # is what makes id() a stable key below -- a fresh GetTracks() would mint
+    # new proxy objects for the same C++ items and invalidate every id.
+    tracks = []     # (id, kind, obj), in board order
+    via_snap = {}   # id -> [x, y, width, netcode, obj]  (width rewritten by retag)
+    seg_snap = {}   # id -> (sx, sy, ex, ey, width, layer, netcode, obj)
     for t in b.GetTracks():
+        tid = id(t)
         if t.GetClass() == "PCB_VIA":
             p = t.GetPosition()
-            key = ("via", p.x, p.y, t.GetNetCode())
+            via_snap[tid] = [int(p.x), int(p.y), via_width(t), t.GetNetCode(), t]
+            tracks.append((tid, "via", t))
+        else:
+            s, e = t.GetStart(), t.GetEnd()
+            seg_snap[tid] = (int(s.x), int(s.y), int(e.x), int(e.y),
+                             t.GetWidth(), t.GetLayer(), t.GetNetCode(), t)
+            tracks.append((tid, "seg", t))
+    log(f"snapshot: {len(seg_snap)} segment(s), {len(via_snap)} via(s)")
+
+    # Every id marked here is removed exactly once, by the single pass that
+    # runs just before the refill at the bottom of main().
+    doomed = set()
+
+    # ---- 1. exact duplicates (segments AND co-located vias) -----------------
+    seen, ndup_v, ndup_s = set(), 0, 0
+    for tid, kind, _t in tracks:
+        if kind == "via":
+            x, y, _w, nc, _o = via_snap[tid]
+            key = ("via", x, y, nc)
             if key in seen:
-                dups.append(t)
+                doomed.add(tid)
                 ndup_v += 1
             else:
                 seen.add(key)
             continue
-        s, e = t.GetStart(), t.GetEnd()
-        key = (min((s.x, s.y), (e.x, e.y)), max((s.x, s.y), (e.x, e.y)),
-               t.GetLayer(), t.GetWidth(), t.GetNetCode())
+        sx, sy, ex, ey, w, lay, nc, _o = seg_snap[tid]
+        key = (min((sx, sy), (ex, ey)), max((sx, sy), (ex, ey)), lay, w, nc)
         if key in seen:
-            dups.append(t)
+            doomed.add(tid)
+            ndup_s += 1
         else:
             seen.add(key)
-    for t in dups:
-        b.Remove(t)
-    ndup_s = len(dups) - ndup_v
-    log(f"duplicates removed: {ndup_s} segment(s), {ndup_v} via(s)")
+    log(f"duplicates marked: {ndup_s} segment(s), {ndup_v} via(s)")
 
     # ---- 2. stale via retag -------------------------------------------------
     # Permanent pipeline, not a migration: the SES round-trip re-creates these
     # vias at the stale size on every route, so the retag has to run after
     # every import for as long as the router is in the chain.
+    # Setters only -- SetWidth/SetDrill mutate the item, never the board's
+    # track container, so they are safe here. The snapshot's width is updated
+    # in step with them so the prune below measures the retagged geometry
+    # rather than the size the SES import left behind.
     retag = 0
-    for t in b.GetTracks():
-        if t.GetClass() != "PCB_VIA":
+    for tid, kind, t in tracks:
+        if kind != "via" or tid in doomed:
             continue
-        if abs(TM(via_width(t)) - float(r_from["size_mm"])) < r_tol and \
+        if abs(TM(via_snap[tid][2]) - float(r_from["size_mm"])) < r_tol and \
                 abs(TM(t.GetDrillValue()) - float(r_from["drill_mm"])) < r_tol:
-            t.SetWidth(FM(float(r_to["size_mm"])))
+            new_w = FM(float(r_to["size_mm"]))
+            t.SetWidth(new_w)
             t.SetDrill(FM(float(r_to["drill_mm"])))
+            via_snap[tid][2] = new_w
             retag += 1
     log(f"vias retagged {r_from['size_mm']}/{r_from['drill_mm']} -> "
         f"{r_to['size_mm']}/{r_to['drill_mm']}: {retag}")
 
+    # BOARD.Remove()'s own docstring: "set the thisdown flag so that the python
+    # wrapper owns the C++ BOARD_ITEM". That ownership flip is the whole
+    # problem -- it is what leaves the container's wrapper stale and what makes
+    # the interpreter delete 260 detached tracks at teardown, printing a
+    # "swig/python detected a memory leak of type 'PCB_TRACK *'" line for each.
+    # RemoveNative() detaches without transferring ownership: the proxies in
+    # `tracks` stay valid pointers, nothing is deleted under us, and the log
+    # stays readable. Fall back to Remove() on a KiCad that lacks it.
+    remove = getattr(b, "RemoveNative", None) or b.Remove
+
+    def apply_removals():
+        """The one and only mutation of the board's track container.
+
+        Runs once, after every decision is made, and nothing reads the board
+        through pcbnew afterwards. `tracks` holds exactly one entry per item,
+        so nothing can be handed to remove() twice -- a double detach is a
+        double-free, which is what the id()-keyed bookkeeping above prevents.
+        """
+        n = 0
+        for tid, _kind, t in tracks:
+            if tid in doomed:
+                remove(t)
+                n += 1
+        log(f"removed {n} item(s) in one pass")
+        return n
+
     # ---- 3. dead-copper prune (non-pour nets) -------------------------------
     if args.dedupe_only:
+        apply_removals()
         pcbnew.ZONE_FILLER(b).Fill(b.Zones())
         pcbnew.SaveBoard(str(pcb_path), b)
         log("dedupe-only: prune skipped, refilled + saved")
@@ -214,23 +305,20 @@ def main() -> int:
     for p in pads:
         pads_by_net[p[4]].append(p)
 
-    # Snapshot every accessor result into plain tuples ONCE per iteration and
-    # never call pcbnew accessors inside the analysis loops — after the
-    # Remove() calls above, GetPosition()/GetStart() intermittently return
-    # unwrapped SwigPyObjects.
+    # The fixpoint runs entirely in Python, over the step-0 snapshot. Each
+    # round re-derives the live geometry by filtering out what earlier rounds
+    # condemned, which is exactly equivalent to re-reading a board that had
+    # those items removed -- the survivors' geometry cannot change -- and it
+    # never touches the board again. Re-enumerating b.GetTracks() here is what
+    # crashed: by the third call the container wrapper was stale.
     pruned_v, pruned_s = 0, 0
     while True:
-        seg_data = []   # (sx, sy, ex, ey, hw, layer, netcode, obj)
-        via_data = []   # (x, y, r, netcode, obj)
-        for t in list(b.GetTracks()):
-            if t.GetClass() == "PCB_VIA":
-                p = t.GetPosition()
-                via_data.append((int(p.x), int(p.y), via_width(t) // 2,
-                                 t.GetNetCode(), t))
-            else:
-                s, e = t.GetStart(), t.GetEnd()
-                seg_data.append((int(s.x), int(s.y), int(e.x), int(e.y),
-                                 t.GetWidth() // 2, t.GetLayer(), t.GetNetCode(), t))
+        seg_data = [(sx, sy, ex, ey, w // 2, lay, nc, o)
+                    for tid, (sx, sy, ex, ey, w, lay, nc, o) in seg_snap.items()
+                    if tid not in doomed]
+        via_data = [(x, y, w // 2, nc, o)
+                    for tid, (x, y, w, nc, o) in via_snap.items()
+                    if tid not in doomed]
         segs_by_net = defaultdict(list)
         for sd in seg_data:
             segs_by_net[sd[6]].append(sd)
@@ -238,7 +326,6 @@ def main() -> int:
         for vd in via_data:
             vias_by_net[vd[3]].append(vd)
 
-        kill = []
         kill_ids = set()   # id()-based: SWIG proxy __eq__ is not identity
         # dead vias: must join >= 2 distinct layers of same-net copper
         for vx, vy, vr, nc, obj in via_data:
@@ -255,7 +342,6 @@ def main() -> int:
                     else:
                         layers.add(play)
             if len(layers) < 2:
-                kill.append(obj)
                 kill_ids.add(id(obj))
         # dead segments: an endpoint touching no same-net copper
         for sx, sy, ex, ey, hw, lay, nc, obj in seg_data:
@@ -282,19 +368,22 @@ def main() -> int:
                             ok = True
                             break
                 if not ok:
-                    kill.append(obj)
                     kill_ids.add(id(obj))
                     break
-        if not kill:
+        if not kill_ids:
             break
-        for obj in kill:
-            if obj.GetClass() == "PCB_VIA":
+        # Condemn, don't remove: the board is left alone until apply_removals().
+        # Classify from the snapshot dicts rather than obj.GetClass(), which is
+        # one more accessor call this loop no longer needs to make.
+        for tid in kill_ids:
+            if tid in via_snap:
                 pruned_v += 1
             else:
                 pruned_s += 1
-            b.Remove(obj)
+        doomed |= kill_ids
     log(f"dead copper pruned: {pruned_v} via(s), {pruned_s} segment(s)")
 
+    apply_removals()
     pcbnew.ZONE_FILLER(b).Fill(b.Zones())
     pcbnew.SaveBoard(str(pcb_path), b)
     log("refilled + saved")

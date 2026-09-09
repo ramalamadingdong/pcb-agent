@@ -301,6 +301,51 @@ def main() -> int:
                 f"{ring:.2f} mm mask+clearance ring is counted"
             )
 
+    # A fiducial IS a pad, and nothing above checks it against the pads already
+    # on the board: the outline test only asks whether it is on the board, and
+    # the keepout test only covers declared rectangles. So a fiducial parked on
+    # a connector passes every check here and ships as a short.
+    #
+    # That happened. FID2 at (50, 3) sat on J4 pin 1 with 0.0000 mm between
+    # them, which DRC reported three ways -- clearance, front solder-mask
+    # bridge, courtyard overlap -- and which export_dsn then compounded by
+    # turning the fiducial's clearance override into a router keepout ring over
+    # that pad, leaving +5V_ARM1 the one unroutable net on the board. One
+    # missing check, four symptoms.
+    #
+    # Runs BEFORE strip_existing so it measures against real neighbours and not
+    # against the fiducials this pass is about to replace.
+    is_fid = lambda fp: (fp.GetFPIDAsString().endswith(FP_NAME)
+                         or fp.GetValue() == FP_NAME)
+    clash = []
+    for i, (kx, ky) in enumerate(kpts):
+        cx, cy = pcbnew.FromMM(kx), pcbnew.FromMM(ky)
+        for fp in b.GetFootprints():
+            if is_fid(fp):
+                continue
+            for p in fp.Pads():
+                pb = p.GetBoundingBox()
+                dx = max(pb.GetLeft() - cx, cx - pb.GetRight(), 0)
+                dy = max(pb.GetTop() - cy, cy - pb.GetBottom(), 0)
+                gap = pcbnew.ToMM(int(math.hypot(dx, dy))) - ring
+                if gap < 0:
+                    clash.append((f"{prefix}{i + 1}", pts[i],
+                                  f"{fp.GetReference()} pad {p.GetPadName()}",
+                                  gap))
+    if clash:
+        lines = "\n".join(
+            f"    {ref} at board-frame {pos} vs {who}: "
+            f"{-gap:.3f} mm short of its {ring:.2f} mm mask+clearance ring"
+            for ref, pos, who, gap in sorted(clash, key=lambda c: c[3]))
+        _lib.fail(
+            f"{len(clash)} fiducial/pad conflict(s) — a fiducial is a pad, and "
+            f"one on a component pad is a short that the outline and keepout "
+            f"checks above cannot see:\n{lines}\n"
+            f"  Move it in [fiducials] positions. Measure the free space rather "
+            f"than guessing: the connector ranks and the mounting-hole heads "
+            f"take more of the edge than a floorplan sketch suggests."
+        )
+
     removed = strip_existing(b)
     if removed:
         print(f"  stripped {removed} existing fiducial(s)", file=sys.stderr)

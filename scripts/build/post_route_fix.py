@@ -681,6 +681,7 @@ def main() -> int:
         return False
 
     unfixed = []
+    pour_plane_layer = {}
     for netname in sorted(pour_names):
         net = b.FindNet(netname)
         if net is None:
@@ -705,6 +706,7 @@ def main() -> int:
             if not cand:
                 continue
             plane_layer = cand[0]
+        pour_plane_layer[netname] = plane_layer
         nc = net.GetNetCode()
         cl = clusters_for(nc)
         bonded = {k for k, c in cl.items() if is_bonded(c, zl, plane_layer)}
@@ -770,6 +772,83 @@ def main() -> int:
             if not done:
                 log(f"{netname} {names}: UNFIXED — manual routing needed")
                 unfixed.append(netname)
+
+    # ---- 4b-2. pour islands: a filled region holding no via is unconnected ---
+    # DRC's unconnected list for a pour net names ZONE REGIONS, not pads. An
+    # F.Cu GND island that touches no via is a separate region of the same net
+    # no matter how many pads sit in it, and 4b above cannot see it: clusters_for
+    # is built from pads, vias and tracks, so an island containing none of them
+    # is not a cluster and is never considered, while one containing only pads
+    # reaches stage (b) with an empty via list and falls straight through to
+    # UNFIXED. Measured on this board: GND fills into 43 islands on F.Cu and 15
+    # on B.Cu against a single clean In1 region.
+    #
+    # A through via spans F..B, so ONE via inside an island bonds it to the
+    # plane and thereby to every other island. That is the whole repair: find
+    # islands with no via of their own and give them one.
+    #
+    # Islands with no pad either should already be gone -- that is what
+    # [[route.pours]] island_removal_layers is for -- so what survives here is
+    # real copper serving real pads.
+    island_vias = island_skipped = 0
+    for netname in sorted(pour_names):
+        net = b.FindNet(netname)
+        plane_layer = pour_plane_layer.get(netname)
+        if net is None or plane_layer is None:
+            continue
+        nc = net.GetNetCode()
+        zl = zones_by_net.get(netname, [])
+        for z in zl:
+            for layer in z.GetLayerSet().CuStack():
+                poly = z.GetFilledPolysList(layer)
+                for i in range(poly.OutlineCount()):
+                    if any(poly.Contains(pcbnew.VECTOR2I(v[0], v[1]), i)
+                           for v in vias_all if v[3] == nc):
+                        continue
+                    outline = poly.Outline(i)
+                    pts = [outline.CPoint(j) for j in range(outline.PointCount())]
+                    if not pts:
+                        continue
+                    x0 = min(p.x for p in pts)
+                    x1 = max(p.x for p in pts)
+                    y0 = min(p.y for p in pts)
+                    y1 = max(p.y for p in pts)
+                    if min(x1 - x0, y1 - y0) < VIA_D + 2 * CLEAR:
+                        island_skipped += 1      # a sliver cannot hold a via
+                        continue
+                    # Work outward from the middle: the centre of an island has
+                    # the most room, and a via there is the least likely to
+                    # squeeze a neighbouring net.
+                    step = max(FM(0.25), (min(x1 - x0, y1 - y0)) // 8)
+                    cxs = sorted(range(x0 + step, x1, step),
+                                 key=lambda v: abs(v - (x0 + x1) // 2))
+                    cys = sorted(range(y0 + step, y1, step),
+                                 key=lambda v: abs(v - (y0 + y1) // 2))
+                    placed = False
+                    for cx in cxs[:24]:
+                        for cy in cys[:24]:
+                            pt = pcbnew.VECTOR2I(int(cx), int(cy))
+                            if not poly.Contains(pt, i):
+                                continue
+                            if not covered_ring(zl, plane_layer, cx, cy):
+                                continue
+                            if not via_ok(cx, cy, nc):
+                                continue
+                            add_via(cx, cy, net)
+                            island_vias += 1
+                            placed = True
+                            break
+                        if placed:
+                            break
+                    if not placed:
+                        island_skipped += 1
+                        log(f"{netname}: island on {b.GetLayerName(layer)} at "
+                            f"({TM(x0):.1f},{TM(y0):.1f})-({TM(x1):.1f},"
+                            f"{TM(y1):.1f}) has no via and no legal site for one")
+    if island_vias or island_skipped:
+        log(f"pour islands stitched: {island_vias} via(s) added, "
+            f"{island_skipped} island(s) left (slivers or no legal site)")
+    stats["island_vias"] = island_vias
 
     # ---- signal-net link-layer fallback helpers -----------------------------
     # The link layers are nearly empty on a board that bans routing on its

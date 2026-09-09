@@ -79,6 +79,26 @@ def pad_local_clearance(pad):
         return pad.GetLocalClearance(None)
 
 
+def footprint_local_clearance(fp):
+    """The FOOTPRINT's clearance override, or None/0 when unset.
+
+    Not the same thing as a pad override, and not reachable through one: KiCad
+    resolves a footprint-level `(clearance ...)` for every pad in it without
+    writing it onto the pads, so pad_local_clearance() returns None for all of
+    them and the DSN never hears about it.
+
+    Stock library footprints carry these. `Package_SO:TI_SO-PowerPAD-8` ships
+    `(clearance 0.2)`, which is why the TPS54360B's own COMP and EN escapes came
+    back as ten DRC clearance errors at 0.16-0.19 mm: every one of them cleared
+    the 0.15 mm board rule the router was given and violated the 0.2 mm rule
+    KiCad actually enforces there.
+    """
+    try:
+        return fp.GetLocalClearance()
+    except TypeError:
+        return fp.GetLocalClearance(None)
+
+
 def main() -> int:
     ap = pass_parser("export_dsn")
     ap.add_argument("--out", required=True, help="path of the .dsn to write")
@@ -155,6 +175,55 @@ def main() -> int:
     if n_clr:
         log(f"bumped {n_clr} DSN clearance rule(s) by 10 um (router margin)")
 
+    # ---- floor the clearance at the strictest footprint-local rule ----------
+    # Specctra's clearance model is per-netclass with no per-object override, so
+    # a footprint-local clearance cannot be expressed as such. The keepout trick
+    # used below for pads is wrong here: those pads have to stay REACHABLE, and
+    # walling them off is what left +5V_ARM1 unroutable when a fiducial ring
+    # landed on J4. Raising the general rule to the strictest local clearance on
+    # the board is the only expression the format has.
+    #
+    # Only UNTYPED rules are floored. `(clearance N (type smd_smd))` is the
+    # pad-to-pad gap, which the router cannot change and which fine-pitch
+    # escapes need left alone.
+    # FOOTPRINT-level overrides only. A PAD-level override is already handled,
+    # and handled better, by the keepout injection below: that walls off the one
+    # pad instead of slowing the whole board down. Taking the max over both is a
+    # measured mistake -- the fiducials carry a 0.6 mm PAD clearance, which
+    # floored every rule on the board to 0.61 mm, and freerouting came back with
+    # 296 segments instead of 1166 and 46 unconnected instead of 9.
+    #
+    # A footprint whose pads carry their own overrides is skipped entirely, for
+    # the same reason: the keepouts already cover it.
+    local_um = 0.0
+    strictest = None
+    for fp in b.GetFootprints():
+        if any(pad_local_clearance(p) for p in fp.Pads()):
+            continue
+        value = footprint_local_clearance(fp)
+        if value and value / 1000.0 > local_um:
+            local_um, strictest = value / 1000.0, fp.GetReference()
+    if local_um:
+        floor_um = local_um + 10          # same 10 um router margin
+        raised = []
+
+        def _floor_clearance(m):
+            have = float(m.group(1))
+            if have >= floor_um:
+                return m.group(0)
+            raised.append(have)
+            return f"(clearance {floor_um:.1f})"
+
+        text, _n = re.subn(r"\(clearance\s+([\d.]+)\s*\)", _floor_clearance, text)
+        if raised:
+            log(f"floored {len(raised)} DSN clearance rule(s) "
+                f"{sorted(set(raised))} -> {floor_um:.1f} um: {strictest}'s "
+                f"footprint carries a {local_um / 1000:.3f} mm local clearance "
+                f"that Specctra cannot express per-object")
+        else:
+            log(f"local clearance {local_um / 1000:.3f} mm ({strictest}) already "
+                f"covered by the DSN rules")
+
     if n_cls:
         log(f"sanitised {n_cls} class name(s) (commas -> _)")
 
@@ -180,6 +249,69 @@ def main() -> int:
             fail(f"{dl} declared a plane in {args.config} but no "
                  f"(layer {dl} (type signal)) found in {args.out} — freerouting "
                  f"would route on it.\n  context: {ctx}")
+
+    # ---- board edge: inset the routable boundary ----------------------------
+    # KiCad enforces `min_copper_edge_clearance` (0.5 mm by default on every
+    # KiCad 10 board) but the DSN carries NO edge rule -- the boundary is just a
+    # polygon, and freerouting keeps only its own copper clearance from it. On
+    # this board that put an EXP_SCL_C run 0.3654 mm from the right edge against
+    # a 0.5 mm constraint: three DRC errors from one track.
+    #
+    # There is nowhere in Specctra to say "keep 0.5 from the outline", so the
+    # boundary handed to the router is shrunk instead. The inset is the full
+    # edge clearance rather than the difference from the copper clearance: what
+    # a router keeps from a boundary is not a documented number, and over-
+    # reserving a fraction of a millimetre of board rim costs nothing.
+    #
+    # CHECK PAD REACH before raising this. Every pad must stay inside the inset
+    # boundary or the router cannot reach it; on this board the closest pad
+    # (D2.1) is 0.95 mm from the edge, so 0.5 mm leaves 0.45 mm of margin.
+    edge_mm = float((cfg.get("route") or {}).get("edge_clearance_mm") or 0.0)
+    if not edge_mm:
+        log("NOTE: [route] edge_clearance_mm is unset, so the DSN carries no "
+            "edge rule at all and the router will lay copper right up to its "
+            "own clearance from the outline. KiCad's default DRC constraint is "
+            "0.5 mm -- set the key to match it.")
+    else:
+        m = re.search(r"(\(boundary\s*\(path\s+\S+\s+\d+\s+)([-\d.\s]+?)(\))",
+                      text, re.S)
+        if not m:
+            fail(f"{args.out}: [route] edge_clearance_mm is set but no "
+                 f"(boundary (path ...)) was found to inset")
+        nums = [float(v) for v in m.group(2).split()]
+        pts = list(zip(nums[0::2], nums[1::2]))
+        xs = sorted({p[0] for p in pts})
+        ys = sorted({p[1] for p in pts})
+        # Coordinates are in the DSN's own unit; parse it rather than assume.
+        um = re.search(r"\(unit\s+(\w+)\)", text)
+        uname = um.group(1) if um else "um"
+        try:
+            uscale = {"um": 1000.0, "mm": 1.0,
+                      "mil": 1 / 0.0254, "inch": 1 / 25.4}[uname]
+        except KeyError:
+            fail(f"{args.out}: unknown DSN unit '{uname}' — refusing to guess")
+        d = edge_mm * uscale
+        if len(xs) == 2 and len(ys) == 2:
+            # Axis-aligned rectangle: pull each side toward the interior.
+            def _inset(v, lo, hi, delta):
+                return v + delta if v == lo else v - delta
+            new = [(_inset(x, xs[0], xs[1], d), _inset(y, ys[0], ys[1], d))
+                   for x, y in pts]
+            body = "  ".join(f"{x:.0f} {y:.0f}" for x, y in new)
+            text = text[:m.start(2)] + body + text[m.end(2):]
+            log(f"inset the DSN boundary by {edge_mm:.3f} mm "
+                f"({(xs[1] - xs[0]) / uscale:.1f} x {(ys[1] - ys[0]) / uscale:.1f} "
+                f"-> {(xs[1] - xs[0] - 2 * d) / uscale:.1f} x "
+                f"{(ys[1] - ys[0] - 2 * d) / uscale:.1f} mm) so routed copper "
+                f"meets the board's edge-clearance constraint")
+        else:
+            # Not a rectangle. Shrinking a general polygon correctly needs a
+            # real offset, and a wrong one either leaks copper to the edge or
+            # eats the board. Say so instead of guessing.
+            log(f"WARNING: outline is not an axis-aligned rectangle "
+                f"({len(pts)} points, {len(xs)} distinct x, {len(ys)} distinct "
+                f"y) — boundary NOT inset. Copper may land within "
+                f"{edge_mm:.3f} mm of the edge and DRC will flag it.")
 
     # ---- clearance-override pads: explicit keepouts -------------------------
     # Specctra's clearance model is per-netclass with NO per-pad overrides, so
