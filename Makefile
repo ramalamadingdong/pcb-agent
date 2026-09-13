@@ -60,6 +60,7 @@ build:
 	$(RUN)$(P)/floorplan.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/add_mounting_holes.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/place.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --rounds $(ROUNDS)
+	$(RUN)$(P)/flip_sides.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --warn-only
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/fanout.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)

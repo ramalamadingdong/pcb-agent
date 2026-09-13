@@ -40,6 +40,8 @@ board.toml schema
     y        = 16.5     # required. board-relative mm
     rotation = 0        # optional, degrees, default 0
     locked   = true     # optional, default true
+    side     = "top"    # optional, "top" or "bottom"; applied by flip_sides.py
+                        # AFTER the placement loop (see that pass for why)
     note     = "antenna hangs over the keepout band"   # optional, ignored
 
     [frame]
@@ -111,6 +113,9 @@ def load_placements(cfg: dict) -> list[dict]:
         locked = e.get("locked", True)
         if not isinstance(locked, bool):
             _lib.fail(f"{where} ({ref}): 'locked' must be true or false, got {locked!r}")
+        side = e.get("side", "top")
+        if side not in ("top", "bottom"):
+            _lib.fail(f"{where} ({ref}): 'side' must be \"top\" or \"bottom\", got {side!r}")
 
         out.append(
             {
@@ -119,6 +124,7 @@ def load_placements(cfg: dict) -> list[dict]:
                 "y": _num(e, where, ref, "y"),
                 "rotation": _num(e, where, ref, "rotation", 0.0),
                 "locked": locked,
+                "side": side,
             }
         )
     return out
