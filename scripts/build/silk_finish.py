@@ -67,6 +67,13 @@ board.toml
     text_tiers         = [[1.0, 0.15], [0.85, 0.15]]   # [size mm, thickness mm]
     gaps_mm            = [1.1, 1.6, 2.1]
     char_width_factor  = 0.95
+    min_line_width_mm  = 0.15    # optional: widen thinner footprint/board silk
+
+``min_line_width_mm`` is the fab's silk floor (JLC: 0.15 mm). Stock library
+footprints draw 0.10-0.12 mm silk, and make_libs vendors them verbatim, so
+without this every rebuild brings the thin lines back. When set, every
+footprint silk line and text, and every board-level silk drawing, thinner
+than the floor is widened to it. Off when absent.
 
     [[silk.text]]
     text  = "rev A"
@@ -191,6 +198,7 @@ def main() -> int:
     tiers_cfg = scfg.get("text_tiers") or REF_TEXT_TIERS
     ref_tiers = tuple((float(t[0]), float(t[1])) for t in tiers_cfg)
     ref_gaps = tuple(float(g) for g in (scfg.get("gaps_mm") or REF_GAPS_MM))
+    min_line_w = float(scfg.get("min_line_width_mm", 0.0) or 0.0)
 
     b = pcbnew.LoadBoard(str(pcb_path))
     f_silk = b.GetLayerID("F.SilkS")
@@ -578,6 +586,47 @@ def main() -> int:
     for w in warnings:
         print(f"  WARNING: {w}", file=sys.stderr)
 
+    # ------------------------------------------------------------------ 4 ----
+    # Fab silk floor: widen every footprint / board silk stroke and text
+    # thinner than min_line_width_mm.  Below ~0.13 mm silk prints unreliably
+    # and the fab's DFM pass flags it; the stock libraries draw 0.10-0.12.
+    widened_lines = widened_texts = 0
+    if min_line_w > 0:
+        floor = mm(min_line_w)
+        tol = mm(0.001)
+
+        def widen_item(it) -> None:
+            nonlocal widened_lines, widened_texts
+            if it.GetLayer() not in silk_layers:
+                return
+            if it.Type() in (pcbnew.PCB_TEXT_T, pcbnew.PCB_FIELD_T):
+                if it.GetTextThickness() < floor - tol:
+                    it.SetTextThickness(floor)
+                    widened_texts += 1
+                return
+            if hasattr(it, "GetWidth") and hasattr(it, "SetWidth"):
+                try:
+                    w = it.GetWidth()
+                except Exception:
+                    return
+                if w < floor - tol:
+                    it.SetWidth(floor)
+                    widened_lines += 1
+
+        for fp in footprints:
+            for gi in fp.GraphicalItems():
+                widen_item(gi)
+            for fld in (fp.Reference(), fp.Value()):
+                if fld.IsVisible():
+                    widen_item(fld)
+        for d in b.GetDrawings():
+            widen_item(d)
+        print(
+            f"  silk floor {min_line_w} mm: widened {widened_lines} lines, "
+            f"{widened_texts} texts",
+            file=sys.stderr,
+        )
+
     pcbnew.SaveBoard(str(pcb_path), b)
     _lib.assert_net_table(pcb_path)
     print("saved", file=sys.stderr)
@@ -590,6 +639,9 @@ def main() -> int:
         references_repositioned=fixed,
         keepouts_dodged=len(keepout_rects),
         edge_margin_mm=edge_margin,
+        min_line_width_mm=min_line_w,
+        silk_lines_widened=widened_lines,
+        silk_texts_widened=widened_texts,
         warnings=warnings,
     )
     return 0

@@ -82,6 +82,17 @@ board.toml
     via_size_mm  = 0.6
     via_drill_mm = 0.3
 
+    # Optional offset_mm shifts the via from the pad centre, in footprint-
+    # local mm (rotated with the part). A second entry for the same pad with
+    # an offset is how a pad gets two vias -- an ESD clamp's ground pin, say
+    # -- without the co-located hole two concentric entries would make. Keep
+    # the via overlapping the pad; the pass drops no stub.
+    [[fanout.thermal_vias]]
+    ref          = "D10"
+    pad          = "3"
+    net          = "GND"
+    offset_mm    = [-0.6, 0.0]
+
     # Optional auto-discovery, off unless auto_pitch_below_mm is present. Any
     # footprint with at least auto_min_pads pads whose closest pad-centre
     # spacing is below auto_pitch_below_mm gets a target derived from the
@@ -160,6 +171,7 @@ class ThermalVias:
     net: str | None
     via_size: float
     via_drill: float
+    offset: tuple[float, float] = (0.0, 0.0)   # footprint-local mm
 
 
 # Nets that must not be fanned out: single-pad no-connects carry an
@@ -524,6 +536,11 @@ def load_thermal_vias(cfg: dict) -> list[ThermalVias]:
             _lib.fail(
                 f"[[fanout.thermal_vias]] #{i + 1} is missing " + ", ".join(missing)
             )
+        off = t.get("offset_mm", (0.0, 0.0))
+        if not isinstance(off, (list, tuple)) or len(off) != 2:
+            _lib.fail(
+                f"[[fanout.thermal_vias]] #{i + 1}: offset_mm must be [dx, dy] in mm"
+            )
         out.append(
             ThermalVias(
                 ref=str(t["ref"]),
@@ -531,6 +548,7 @@ def load_thermal_vias(cfg: dict) -> list[ThermalVias]:
                 net=str(t["net"]) if "net" in t else None,
                 via_size=float(t.get("via_size_mm", 0.6)),
                 via_drill=float(t.get("via_drill_mm", 0.3)),
+                offset=(float(off[0]), float(off[1])),
             )
         )
     return out
@@ -730,16 +748,24 @@ def main() -> int:
             net = pad.net_name or tv.net or ""
             if not is_routable(net):
                 continue
-            px, py = rotate(pad.position[0], pad.position[1], fp.rotation)
+            px, py = rotate(
+                pad.position[0] + tv.offset[0],
+                pad.position[1] + tv.offset[1],
+                fp.rotation,
+            )
             via_xy = (
                 round(fp.position[0] + ox + px, 4),
                 round(fp.position[1] + oy + py, 4),
+            )
+            where = (
+                f"{tv.ref}.{tv.pad}"
+                + (f" offset {tv.offset}" if tv.offset != (0.0, 0.0) else "")
             )
             reason = obstacles.blocker(net, via_xy, via_r, None, 0.0)
             if reason is not None:
                 skipped += 1
                 print(
-                    f"    {tv.ref}.{tv.pad} thermal via skipped: {reason}",
+                    f"    {where} thermal via skipped: {reason}",
                     file=sys.stderr,
                 )
                 continue
