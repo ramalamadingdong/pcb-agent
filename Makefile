@@ -51,7 +51,10 @@ doctor:
 # ending in the pre-route snapshot. Order is load-bearing: mounting holes
 # before the placement loop (their courtyards are obstacles), fiducials
 # before the pour refill (the pour must honour their clearance ring),
-# keepouts before silk (silk avoids the declared rectangles).
+# keepouts before silk (silk avoids the declared rectangles). direct_connect
+# runs twice: `pre` snaps Direct-tagged parts onto anchored targets so
+# place.py can hold them, `post` snaps the rest once the optimiser and
+# flip_sides have put their targets where they stay.
 build:
 	$(RUN)$(P)/make_libs.py --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/generate_schematic.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG)
@@ -59,8 +62,10 @@ build:
 	$(RUN)$(P)/apply_netclasses.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/floorplan.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/add_mounting_holes.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/direct_connect.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --stage pre
 	$(RUN)$(P)/place.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --rounds $(ROUNDS)
 	$(RUN)$(P)/flip_sides.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/direct_connect.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --stage post
 	$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --warn-only
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/fanout.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)

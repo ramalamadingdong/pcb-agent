@@ -133,11 +133,12 @@ The schematic is not the source of truth. This file is. The KiCad project is
 a build output.
 
 ```
-Net,RefDes,Pin,PinName,Note
-VBUS,J1,A4,VBUS,USB-C receptacle
-VBUS,U4,4,VDD,charger input
-VBUS,D1,A,Anode,Schottky into VSYS
-GND,J1,SH1,SHIELD,"chassis, stitch to GND with 4 vias"
+Net,RefDes,Pin,PinName,Direct,Note
+VBUS,J1,A4,VBUS,,USB-C receptacle
+VBUS,U4,4,VDD,,charger input
+VBUS,D1,A,Anode,,Schottky into VSYS
+VBUS,C7,1,~,yes,"100 nF, pad touching a VBUS pin"
+GND,J1,SH1,SHIELD,,"chassis, stitch to GND with 4 vias"
 ```
 
 Rules:
@@ -146,6 +147,13 @@ Rules:
 - **`NC` written out** where a pin is meant to be unconnected, with a note
   saying why. A missing row and an intentional no-connect must not look the
   same.
+- **`Direct` is optional** and usually empty. Tag ONE pin of a part with
+  `yes` and `direct_connect.py` finds the other pins already on that net and
+  places the part with that pad touching one of them — no trace. `REF` or
+  `REF.PIN` limits the search to that part or pin. Use it for decoupling
+  caps on IC supply pins and TVS parts on connector pins. It can't be
+  combined with `[[floorplan.place]]` for the same part, and a tagged part
+  can't be another tag's target.
 - **The note column carries the reason**, not a restatement of the pin name.
   Cite the datasheet page where the choice came from a document.
 - Pin numbers come from the datasheet's land drawing, not its text. Where the

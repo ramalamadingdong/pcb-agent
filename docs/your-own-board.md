@@ -38,6 +38,7 @@ numbers. Never write a KiCad page coordinate into board.toml.
 | `[libs]`, `[[libs.symbols]]` | make_libs, generate_schematic | project library name, vendored-footprint dir, and pin tables for ICs with no stock symbol — pin numbers from the datasheet's land drawing |
 | `[parts.<REF>]`, `[[part_rules]]` | make_libs, generate_schematic | symbol + footprint per refdes (rules by prefix for jellybeans, per-ref overrides for everything else) |
 | `[[floorplan.place]]` | floorplan, place | hand placements, locked; see the loop below |
+| `[direct]` | direct_connect | `overlap_mm` / `clearance_mm` for `Direct`-tagged netlist rows: parts placed pad-on-pad against a pin already on their net. Every pair shows up in DRC as an expected `courtyards_overlap`, listed in the pass's JSON |
 | `[mounting_holes]`, `[fiducials]` | passes AND checker | positions place them; count/diameter checks them in the gerbers |
 | `[[keepouts]]` | add_keepouts, silk, router passes, both checkers | one rectangle feeds the rule area, the silk dodge, the router fences, the board check and the gerber check |
 | `[[connectors]]` | check_placement | which parts you plug into from an EDGE, and how much room the plug and cable need in front. Edge-mating only — a vertical stacking header mates from above and is not modelled |

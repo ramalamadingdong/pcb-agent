@@ -1,7 +1,9 @@
-Net,RefDes,Pin,PinName,Note
-VBUS,J1,A4,VBUS,USB-C receptacle
-VBUS,U4,4,VDD,charger input
-VBUS,D1,A,Anode,Schottky into VSYS
-VSYS,D1,K,Cathode,system rail after OR-ing
-GND,J1,SH1,SHIELD,"chassis, stitch to GND with 4 vias"
-NC,U2,7,RESERVED,"datasheet p.14 — leave floating, do not ground"
+Net,RefDes,Pin,PinName,Direct,Note
+VBUS,J1,A4,VBUS,,USB-C receptacle
+VBUS,U4,4,VDD,,charger input
+VBUS,D1,A,Anode,,Schottky into VSYS
+VSYS,D1,K,Cathode,,system rail after OR-ing
+VSYS,C3,1,~,D1.K,"optional Direct column: pad placed touching D1 cathode, no trace"
+GND,C3,2,~,,
+GND,J1,SH1,SHIELD,,"chassis, stitch to GND with 4 vias"
+NC,U2,7,RESERVED,,"datasheet p.14 — leave floating, do not ground"

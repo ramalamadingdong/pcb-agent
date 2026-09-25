@@ -35,6 +35,11 @@ can hold a position:
     `add_mounting_holes.hole_refs()` — imported so the two cannot drift)
   * anything extra in `[floorplan] anchors`
 
+plus every `Direct`-tagged part that `direct_connect.py --stage pre` has
+already snapped onto an anchored target (`direct_connect.held_refs`,
+imported so the two cannot drift). Those are in their final spot before
+the loop starts; the optimiser packs around them.
+
 How the sibling passes are run
 ------------------------------
 All three (`repair_pads`, `tuck_in`, `fix_pad_angles`) are run as
@@ -93,6 +98,7 @@ from pathlib import Path
 
 import _lib
 from add_mounting_holes import hole_refs
+from direct_connect import held_refs
 
 NAME = "place"
 HERE = Path(__file__).resolve().parent
@@ -205,6 +211,7 @@ def main() -> int:
 
     cfg = _lib.load_config(args.config)
     anchors = anchors_for(cfg)
+    anchors += [r for r in held_refs(Path(args.netlist), cfg, anchors) if r not in anchors]
     anchor_arg = ",".join(anchors)
 
     kct_python = os.environ.get("KCT_PYTHON", sys.executable)
