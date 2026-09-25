@@ -4,3 +4,7 @@
 * text=auto eol=lf
 *.png binary
 *.jar binary
+# A release is the exact bytes that were ordered and hashed in its
+# MANIFEST.sha256. No end-of-line conversion, in either direction: the JLC
+# CSVs are CRLF, and normalising them broke every hash on a fresh clone.
+**/release/** -text
