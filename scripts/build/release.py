@@ -145,6 +145,9 @@ def main() -> int:
              "validate_gerbers")
 
     dest = board.parent / "release" / f"rev-{rev}"
+    # Before staging: the staging directory lives beside the board and would
+    # itself read as uncommitted work.
+    git = git_state()
     with tempfile.TemporaryDirectory(dir=board.parent) as t:
         staged = Path(t) / "stage"
         stage(board, cfg, cfg_path, fab_dir, staged)
@@ -164,7 +167,7 @@ def main() -> int:
         (staged / "release.json").write_text(json.dumps({
             "revision": rev,
             "project": f"{board.stem}.kicad_pro",
-            "git": git_state(),
+            "git": git,
             "kicad_version": parity.get("kicad_version"),
             "parity_ok": parity.get("ok"),
             "open_this": f"{board.stem}.kicad_pro",
