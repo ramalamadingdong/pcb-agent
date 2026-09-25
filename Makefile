@@ -15,6 +15,8 @@ NETLIST ?= $(BOARD_DIR)/netlist.csv
 SCH ?= $(BOARD_DIR)/$(NAME).kicad_sch
 PCB ?= $(BOARD_DIR)/$(NAME).kicad_pcb
 SNAPSHOT ?= $(BOARD_DIR)/pre_route.kicad_pcb
+KICAD_NET ?= $(BOARD_DIR)/$(NAME)-netlist.kicad_net
+RELEASE ?= $(lastword $(sort $(wildcard $(BOARD_DIR)/release/rev-*)))
 ROUNDS ?= 4
 PASSES ?= 100
 
@@ -32,7 +34,7 @@ endif
 RUN := $(if $(HAVE_IMAGE),./run.sh )
 P := python3 scripts/build
 
-.PHONY: doctor build route export check check-placement clean setup
+.PHONY: doctor build route export check check-placement parity release verify-release test-parity clean setup
 
 setup:
 	docker build -t $(IMAGE) \
@@ -54,7 +56,10 @@ doctor:
 # keepouts before silk (silk avoids the declared rectangles). direct_connect
 # runs twice: `pre` snaps Direct-tagged parts onto anchored targets so
 # place.py can hold them, `post` snaps the rest once the optimiser and
-# flip_sides have put their targets where they stay.
+# flip_sides have put their targets where they stay. link_schematic runs
+# last, after every pass that adds a footprint and after the kct fill: it
+# ties each footprint to its schematic symbol so the project a human opens
+# is one design to KiCad, not two files that happen to agree.
 build:
 	$(RUN)$(P)/make_libs.py --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/generate_schematic.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG)
@@ -73,6 +78,7 @@ build:
 	$(RUN)$(P)/add_keepouts.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/silk_finish.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --fill-only
+	$(RUN)$(P)/link_schematic.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	cp $(PCB) $(SNAPSHOT)
 	@echo "snapshot: $(SNAPSHOT)"
 
@@ -82,6 +88,7 @@ build:
 route:
 	$(RUN)$(P)/route.py --board $(PCB) --snapshot $(SNAPSHOT) --netlist $(NETLIST) --config $(CONFIG) --passes $(PASSES)
 
+# Refuses to plot unless check_parity passes on the board being plotted.
 export:
 	$(RUN)$(P)/export_fab.py --board $(PCB) --config $(CONFIG)
 
@@ -90,8 +97,28 @@ export:
 # validate_gerbers reads the exported bytes as text and cannot, but those are
 # the bytes the fab will plot. A pass in the first and a fail in the second
 # means the export moved something -- which is the whole point of having both.
-check: check-placement
-	@$(RUN)python3 scripts/validate_gerbers.py $(BOARD_DIR)/fab -c $(CONFIG)
+check: check-placement parity
+	@$(RUN)python3 scripts/validate_gerbers.py $(BOARD_DIR)/fab -c $(CONFIG) --kicad-netlist $(KICAD_NET)
+
+# The schematic a reviewer opens IS the final board: KiCad's own parity,
+# an independent eeschema-netlist-vs-pads diff, and sampled DRC for shorts
+# and unconnected copper -- on the board after every post-route pass.
+parity:
+	$(RUN)$(P)/check_parity.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+
+# Freeze the reviewed project + the ordered package under
+# $(BOARD_DIR)/release/rev-<[build] revision>/, with hashes. Commit it.
+release:
+	$(RUN)$(P)/release.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+
+# Hashes, zip, and (in the container) re-derive the package from the
+# released board. RELEASE defaults to the highest rev-* directory.
+verify-release:
+	@test -n "$(RELEASE)" || { echo "no $(BOARD_DIR)/release/rev-* — run make release"; exit 1; }
+	$(RUN)python3 scripts/verify_release.py $(RELEASE)
+
+test-parity:
+	$(RUN)$(P)/test_parity.py $(BOARD_DIR)
 
 # Connector accessibility + copper in keepouts, straight off the board file.
 # Runs warn-only inside `build` (where the board is not final) and hard here.

@@ -1,8 +1,8 @@
 (export
 	(version "E")
 	(design
-		(source "/work/examples/unoq-power-shield/unoq-power-shield.kicad_sch")
-		(date "2026-08-30T19:59:58")
+		(source "unoq-power-shield.kicad_sch")
+		(date "")
 		(tool "Eeschema 10.0.5")
 		(sheet
 			(number "1")
@@ -75,11 +75,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -129,11 +129,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -183,11 +183,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -237,11 +237,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -291,11 +291,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -345,11 +345,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -399,11 +399,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -453,11 +453,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -507,11 +507,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -561,11 +561,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -615,11 +615,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -669,11 +669,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -723,11 +723,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(sheetpath
 				(names "/")
@@ -775,11 +775,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -829,11 +829,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -883,11 +883,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -946,11 +946,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1009,11 +1009,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "dnp")
@@ -1078,11 +1078,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "dnp")
@@ -1153,11 +1153,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "dnp")
@@ -1222,11 +1222,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "dnp")
@@ -1297,11 +1297,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "dnp")
@@ -1378,11 +1378,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1432,11 +1432,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1489,11 +1489,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1546,11 +1546,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1603,11 +1603,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1660,11 +1660,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(sheetpath
 				(names "/")
@@ -1724,11 +1724,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1778,11 +1778,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1832,11 +1832,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1886,11 +1886,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1940,11 +1940,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -1994,11 +1994,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2048,11 +2048,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2102,11 +2102,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2156,11 +2156,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2210,11 +2210,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2264,11 +2264,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2318,11 +2318,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2372,11 +2372,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2426,11 +2426,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2480,11 +2480,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2534,11 +2534,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2588,11 +2588,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2642,11 +2642,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2696,11 +2696,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(property
 				(name "ki_keywords")
@@ -2750,11 +2750,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(sheetpath
 				(names "/")
@@ -2817,11 +2817,11 @@
 			)
 			(property
 				(name "Sheetname")
-				(value "Root")
+				(value "unoq-power-shield")
 			)
 			(property
 				(name "Sheetfile")
-				(value "examples/unoq-power-shield/unoq-power-shield.kicad_sch")
+				(value "unoq-power-shield.kicad_sch")
 			)
 			(sheetpath
 				(names "/")
@@ -3598,7 +3598,12 @@
 			)
 		)
 	)
-	(libraries)
+	(libraries
+		(library
+			(logical "unoq_power_shield")
+			(uri "${KIPRJMOD}/unoq_power_shield.kicad_sym")
+		)
+	)
 	(nets
 		(net
 			(code "1")
@@ -3686,7 +3691,7 @@
 		(net
 			(code "2")
 			(name "5V")
-			(class "Default")
+			(class "Power,Default")
 			(node
 				(ref "C8")
 				(pin "1")
@@ -3877,7 +3882,7 @@
 		(net
 			(code "10")
 			(name "GND")
-			(class "Default")
+			(class "Power,Default")
 			(node
 				(ref "C1")
 				(pin "2")
@@ -4610,7 +4615,7 @@
 		(net
 			(code "46")
 			(name "VIN")
-			(class "Default")
+			(class "Power,Default")
 			(node
 				(ref "C1")
 				(pin "1")
@@ -4664,7 +4669,7 @@
 		(net
 			(code "47")
 			(name "VIN_PROT")
-			(class "Default")
+			(class "Power,Default")
 			(node
 				(ref "D2")
 				(pin "1")
@@ -4704,7 +4709,7 @@
 		(net
 			(code "48")
 			(name "VIN_RAW")
-			(class "Default")
+			(class "Power,Default")
 			(node
 				(ref "J1")
 				(pin "2")

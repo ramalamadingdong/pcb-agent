@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """export_fab — board -> fab package (gerbers + drill + pos [+ JLC BOM/CPL]).
 
+Nothing is exported until check_parity passes on the board being exported:
+a fab package is only built from a board that is provably its schematic.
+
 The export pins the coordinate contract the whole repo depends on: the
 board's aux (drill/place) origin is set to the Edge.Cuts BOTTOM-LEFT
 corner, and every artifact is exported against it. That makes gerber and
@@ -87,6 +90,18 @@ def main() -> int:
         pcbnew.SaveBoard(str(board_path), board)
         log(f"aux origin -> board bottom-left ({x_left:.3f}, {y_bottom:.3f}) kicad-mm")
     _lib.assert_net_table(board_path)
+
+    # --- 1b. parity gate: no fab package for a board that isn't its schematic ---
+    # Runs on the exact file about to be plotted, after every post-route pass.
+    # It also writes <board>-netlist.kicad_net, which validate_gerbers checks
+    # the plotted pad nets against.
+    gate = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve().parent / "check_parity.py"),
+         "--board", str(board_path), "--config", args.config],
+        stdout=subprocess.PIPE, text=True)
+    if gate.returncode != 0:
+        _lib.fail("export refused: check_parity failed (above). The schematic a "
+                  "reviewer opens would not be this board.")
 
     # --- 2. gerbers (X2 on by default — required), drill, pos ---
     run(kcli + ["pcb", "export", "gerbers", str(board_path), "-o", f"{out_dir}/",

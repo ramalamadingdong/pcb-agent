@@ -400,6 +400,8 @@ def canonical_layer(filename: str) -> str | None:
 @dataclass
 class FabPackage:
     root: Path
+    # eeschema's netlist export (--kicad-netlist); None = not given.
+    kicad_netlist: Path | None = None
     copper: dict[str, GerberLayer] = field(default_factory=dict)
     silk: dict[str, GerberLayer] = field(default_factory=dict)
     outline: GerberLayer | None = None
@@ -846,6 +848,187 @@ def check_rf_budget(pkg: FabPackage, cfg: dict, rep: Report) -> None:
             rep.ok(f"rf/{net}", f"{total:.1f}mm of {limit}mm")
 
 
+
+# --------------------------------------------------------------------------
+# pad nets vs the schematic
+# --------------------------------------------------------------------------
+
+_SX_TOKEN = re.compile(r'\s*(?:(\()|(\))|"((?:[^"\\]|\\.)*)"|([^\s()"]+))')
+
+
+def _parse_sexpr(text: str) -> list:
+    stack: list[list] = [[]]
+    pos = 0
+    while pos < len(text):
+        m = _SX_TOKEN.match(text, pos)
+        if not m:
+            if not text[pos:].strip():
+                break
+            raise ValueError(f"s-expression parse error at offset {pos}")
+        pos = m.end()
+        if m.group(1):
+            stack.append([])
+        elif m.group(2):
+            done = stack.pop()
+            stack[-1].append(done)
+        elif m.group(3) is not None:
+            stack[-1].append(re.sub(r"\\(.)", r"\1", m.group(3)))
+        elif m.group(4) is not None:
+            stack[-1].append(m.group(4))
+    return stack[0][0]
+
+
+def _kids(node: list, head: str) -> list[list]:
+    return [c for c in node[1:] if isinstance(c, list) and c and c[0] == head]
+
+
+def _val(node: list, head: str, default: str = "") -> str:
+    for c in _kids(node, head):
+        if len(c) > 1:
+            return c[1]
+    return default
+
+
+def read_kicad_netlist(path: Path) -> tuple[set[str], dict[tuple[str, str], str]]:
+    """(component refs, {(ref, pin): net}) from a `kicad-cli sch export
+    netlist --format kicadsexpr` file."""
+    root = _parse_sexpr(path.read_text(encoding="utf-8", errors="replace"))
+    refs = {_val(c, "ref") for sec in _kids(root, "components") for c in _kids(sec, "comp")}
+    pins: dict[tuple[str, str], str] = {}
+    for sec in _kids(root, "nets"):
+        for n in _kids(sec, "net"):
+            for node in _kids(n, "node"):
+                pins[(_val(node, "ref"), _val(node, "pin"))] = _val(n, "name")
+    return refs, pins
+
+
+def _x2_unescape(s: str) -> str:
+    return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), s)
+
+
+def gerber_pad_nets(path: Path) -> dict[tuple[str, str], set[str]]:
+    """{(ref, pad): {net, ...}} from a copper layer's X2 object attributes.
+
+    KiCad sets %TO.P,<ref>,<pad>*% and %TO.N,<net>*% before each pad it
+    plots and clears them with %TD*%. Any operation drawn while TO.P is set
+    belongs to that pad.
+    """
+    text = path.read_text(errors="replace")
+    attrs: dict[str, str] = {}
+    out: dict[tuple[str, str], set[str]] = {}
+    for m in re.finditer(r"%([^%]*)\*%|([^%*\s][^%*]*)\*", text):
+        ext, word = m.group(1), m.group(2)
+        if ext is not None:
+            if ext.startswith("TD"):
+                key = ext[2:].lstrip(".")
+                if key:
+                    attrs.pop("." + key, None)
+                else:
+                    attrs.clear()
+            elif ext.startswith("TO."):
+                key, _, value = ext[2:].partition(",")
+                attrs[key] = value
+            continue
+        if ".P" in attrs and re.search(r"D0?[123]$|^G36$", word):
+            fields = [_x2_unescape(f) for f in attrs[".P"].split(",")]
+            ref = fields[0]
+            pad = fields[1] if len(fields) > 1 else ""
+            out.setdefault((ref, pad), set()).add(_x2_unescape(attrs.get(".N", "")))
+    return out
+
+
+def _auto(net: str) -> bool:
+    return not net or net.startswith(("unconnected-", "Net-(")) or net == "N/C"
+
+
+def _canonical(pins: dict[tuple[str, str], str]) -> dict[tuple[str, str], str | None]:
+    members: dict[str, list] = {}
+    for node, net in pins.items():
+        members.setdefault(net, []).append(node)
+    out: dict[tuple[str, str], str | None] = {}
+    for node, net in pins.items():
+        if not _auto(net):
+            out[node] = net
+        elif len(members[net]) < 2:
+            out[node] = None
+        else:
+            out[node] = "auto:" + ",".join(f"{r}.{p}" for r, p in sorted(members[net]))
+    return out
+
+
+def check_pad_nets(pkg: FabPackage, cfg: dict, rep: Report) -> None:
+    """Every pad the fab will plot carries the net the schematic says.
+
+    The last link in schematic -> board -> gerbers. check_parity proves the
+    board matches the schematic; this proves the export did not change it,
+    reading only the bytes the fab receives. Pads on parts that are not in
+    the schematic must belong to a declared mounting hole or fiducial and
+    carry no net.
+    """
+    name = "pad nets match schematic"
+    if pkg.kicad_netlist is None:
+        rep.skip(name, "no --kicad-netlist (eeschema's netlist export; "
+                       "check_parity writes <board>-netlist.kicad_net)")
+        return
+    if not pkg.kicad_netlist.exists():
+        rep.bad(name, f"{pkg.kicad_netlist} not found")
+        return
+    if not pkg.copper:
+        rep.bad(name, "no copper layers in the package")
+        return
+    refs, sch_pins = read_kicad_netlist(pkg.kicad_netlist)
+
+    plotted: dict[tuple[str, str], set[str]] = {}
+    for layer in pkg.copper.values():
+        for node, nets in gerber_pad_nets(layer.path).items():
+            plotted.setdefault(node, set()).update(nets)
+    if not plotted:
+        rep.bad(name, "no X2 pad attributes (%TO.P) in the copper layers — "
+                      "export with X2 attributes on")
+        return
+
+    mech = set()
+    for section, default in (("mounting_holes", "H"), ("fiducials", "FID")):
+        sec = cfg.get(section) or {}
+        prefix = sec.get("ref_prefix", default)
+        mech |= {f"{prefix}{i}" for i in range(1, len(sec.get("positions") or []) + 1)}
+
+    problems: list[str] = []
+    single: dict[tuple[str, str], str] = {}
+    for (ref, pad), nets in sorted(plotted.items()):
+        if ref not in refs:
+            if ref not in mech:
+                problems.append(f"{ref}: plotted, but no such part in the schematic")
+            elif any(not _auto(n) for n in nets):
+                problems.append(f"{ref}: board-only part plotted on net(s) {sorted(nets)}")
+            continue
+        if not pad:
+            continue
+        if len(nets) > 1:
+            problems.append(f"{ref} pad {pad}: plotted on several nets {sorted(nets)}")
+            continue
+        single[(ref, pad)] = next(iter(nets))
+    sch = _canonical(sch_pins)
+    got = _canonical(single)
+    for node in sorted(set(sch) | set(got)):
+        if node not in got:
+            problems.append(f"{node[0]} pin {node[1]}: on net {sch[node]!r} in the "
+                            "schematic, no pad for it in the copper")
+        elif sch.get(node) != got[node]:
+            problems.append(f"{node[0]} pad {node[1]}: schematic "
+                            f"{sch.get(node) or 'no net'}, gerbers {got[node] or 'no net'}")
+    missing_parts = sorted(r for r in refs if not any(n[0] == r for n in plotted))
+    for r in missing_parts:
+        problems.append(f"{r}: in the schematic, no pads plotted")
+
+    if problems:
+        rep.bad(name, f"{len(problems)} disagreement(s): " + "; ".join(problems[:12])
+                + (" ..." if len(problems) > 12 else ""))
+    else:
+        rep.ok(name, f"{len(single)} pads on {len({r for r, _ in single})} parts match "
+                     f"{pkg.kicad_netlist.name}")
+
+
 CHECKS = [
     check_package_sane,
     check_frame,
@@ -857,6 +1040,7 @@ CHECKS = [
     check_keepouts,
     check_thermal_vias,
     check_rf_budget,
+    check_pad_nets,
 ]
 
 
@@ -958,6 +1142,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-c", "--config", default="board.toml", help="rules file")
     ap.add_argument("--init", action="store_true", help="write a starter board.toml and exit")
     ap.add_argument("--no-color", action="store_true")
+    ap.add_argument("--kicad-netlist", default=None,
+                    help="eeschema netlist export to check pad nets against "
+                         "(check_parity writes <board>-netlist.kicad_net)")
     args = ap.parse_args(argv)
 
     if args.init:
@@ -990,6 +1177,8 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     pkg = load_package(root)
+    if args.kicad_netlist:
+        pkg.kicad_netlist = Path(args.kicad_netlist)
     rep = Report()
     for check in CHECKS:
         try:

@@ -176,6 +176,15 @@ Signed off 2026-08-30 except the two that can only close at order time.
       violations**.
 - [x] `validate_gerbers` PASS with this board's `board.toml` — 14 passed,
       0 failed (2 SKIPs: unmatched mask/paste files, no RF budget)
+- [x] `check_parity` PASS (added 2026-09-25). `link_schematic` was run
+      on this board and its snapshot. It changed metadata only: symbol
+      paths, library nicknames, DNP on J5/J10–J13, and board-only on
+      H1–H4/FID1–FID3. Gerbers, drill, pos and JLC BOM/CPL re-exported
+      identical, dates aside. Before the pass, KiCad reported 61 parity
+      items: 54 unlinked footprints and 7 undeclared holes/fiducials.
+      After it: KiCad parity 0, independent netlist-vs-pads diff 0, 5 DRC
+      runs with 0 shorts and 0 unconnected, and `validate_gerbers` pad nets
+      159/159 on 49 parts. Frozen as `release/rev-1/`.
 - [x] `check_placement` PASS — 5 passed, 0 failed. Every edge-mating
       connector (J1, J2 screw terminals; J3, J4 Qwiic) reaches its edge and
       has a clear mating corridor, with two acknowledged screw-head grazes

@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "unoq_power_shield")(type "KiCad")(uri "${KIPRJMOD}/unoq_power_shield.kicad_sym")(options "")(descr "project library, vendored by make_libs"))
+)

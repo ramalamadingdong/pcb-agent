@@ -45,7 +45,7 @@ from pathlib import Path
 # insert only covers the isolated-mode / -P invocations where it does not.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _lib import emit, fail, load_config, pass_parser  # noqa: E402
+from _lib import emit, fail, load_config, mechanical_parts, pass_parser  # noqa: E402
 
 from kicad_tools.schematic.models.schematic import Schematic  # noqa: E402
 from kicad_tools.schematic.registry import get_registry  # noqa: E402
@@ -194,6 +194,22 @@ def short_value(comment: str) -> str:
         ):
             return w
     return first[:24]
+
+
+def board_only_notes(cfg: dict) -> list[str]:
+    """One printed line per kind of footprint the board carries without a
+    symbol: the mounting holes and fiducials board.toml declares.
+
+    They are real copper and drill, but not circuit parts, so they are not
+    drawn as symbols; the board marks them "Not in schematic" and
+    check_parity fails if any of them ever carries a net. Saying so on the
+    sheet means a reviewer looking for H1 finds the reason instead of a gap.
+    """
+    kinds: dict[str, list[str]] = {}
+    for ref, what in mechanical_parts(cfg).items():
+        kinds.setdefault(what, []).append(ref)
+    return [f"Board only, not drawn here ({what}s, no net): {', '.join(refs)}"
+            for what, refs in kinds.items()]
 
 
 # =============================================================================
@@ -386,7 +402,9 @@ def main() -> int:
             sch.add_pwr_flag(x, y)
             sch.add_global_label(net, x, y, shape="passive", validate_connection=False)
 
-        for i, line in enumerate(sc.get("notes") or ["Generated from netlist.csv - do not hand-edit"]):
+        notes = list(sc.get("notes") or ["Generated from netlist.csv - do not hand-edit"])
+        notes += board_only_notes(cfg)
+        for i, line in enumerate(notes):
             sch.add_text(line, 40, 30 + i * 10)
 
         sch.write(out)

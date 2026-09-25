@@ -149,7 +149,7 @@
 			(outputdirectory "")
 		)
 	)
-	(footprint "SOT-23"
+	(footprint "unoq_power_shield:SOT-23"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "03a10932-1ddc-4eed-a44c-98fc51e6f35f")
@@ -212,6 +212,9 @@
 				)
 			)
 		)
+		(path "/309017fa-bde8-475a-827c-c476d908c3e0")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -516,7 +519,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "04d7ac31-290b-4152-96f1-cbbeb4e54fe3")
@@ -579,6 +582,9 @@
 				)
 			)
 		)
+		(path "/d20c7bdd-dfaf-457a-b3e7-7d82d1c3e9f0")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -663,7 +669,7 @@
 			)
 		)
 	)
-	(footprint "C_1206_3216Metric"
+	(footprint "unoq_power_shield:C_1206_3216Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "099f9323-a090-41e8-ae87-3640467c167c")
@@ -726,6 +732,9 @@
 				)
 			)
 		)
+		(path "/08da35ad-bcb2-49dd-8c9d-c7c6fbd59b52")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -810,7 +819,7 @@
 			)
 		)
 	)
-	(footprint "C_0603_1608Metric"
+	(footprint "unoq_power_shield:C_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "10f14ec9-b4c3-4dc8-8332-949ba87ec713")
@@ -873,6 +882,9 @@
 				)
 			)
 		)
+		(path "/1219a74d-946b-4d5f-aa77-012fea6b4ded")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -959,7 +971,7 @@
 			)
 		)
 	)
-	(footprint "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+	(footprint "unoq_power_shield:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "125c6ebc-2fb8-4561-9864-6d6bdb9ff610")
@@ -1022,6 +1034,9 @@
 				)
 			)
 		)
+		(path "/f40d28ae-3509-4ab9-9ab4-280f6a570d37")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -1377,7 +1392,7 @@
 			)
 		)
 	)
-	(footprint "TI_SO-PowerPAD-8"
+	(footprint "unoq_power_shield:TI_SO-PowerPAD-8"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "145d6575-9b80-46e2-b31a-adb709a7795f")
@@ -1432,6 +1447,9 @@
 				)
 			)
 		)
+		(path "/d1b76ef2-6d0e-4ec4-ba4a-0b91f38fc0ef")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(clearance 0.2)
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
@@ -1671,7 +1689,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "1d656c3a-aa2f-4d25-be72-d3db9848eb50")
@@ -1734,6 +1752,9 @@
 				)
 			)
 		)
+		(path "/c6de70e3-da84-4dda-ada0-cbba9ee54b51")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -1819,7 +1840,7 @@
 			)
 		)
 	)
-	(footprint "PinHeader_1x06_P2.54mm_Vertical"
+	(footprint "unoq_power_shield:PinHeader_1x06_P2.54mm_Vertical"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "2c233ecb-0648-4ed8-92be-d8839218dc78")
@@ -1882,7 +1903,10 @@
 				)
 			)
 		)
-		(attr through_hole)
+		(path "/07db9ead-739f-45e9-a496-244cb387003e")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
+		(attr through_hole dnp)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
 			(start -1.38 -1.38)
@@ -2083,7 +2107,7 @@
 			)
 		)
 	)
-	(footprint "D_SMA"
+	(footprint "unoq_power_shield:D_SMA"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "3cafc42d-7690-4557-9644-3efcb7ea3f1d")
@@ -2138,6 +2162,9 @@
 				)
 			)
 		)
+		(path "/48e1d92f-b955-48e6-a712-ab8bda1204b8")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -2400,7 +2427,7 @@
 				)
 			)
 		)
-		(attr exclude_from_pos_files exclude_from_bom)
+		(attr board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)
@@ -2422,7 +2449,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "40f578e4-955f-49cb-a22c-f20d833968dd")
@@ -2485,6 +2512,9 @@
 				)
 			)
 		)
+		(path "/39ddbade-09f1-4bc6-a5c4-abe7291cbc1b")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -2570,7 +2600,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "42a732a6-55dc-41a4-850c-0ac3a018b2fb")
@@ -2633,6 +2663,9 @@
 				)
 			)
 		)
+		(path "/fc6be2e2-8b5b-4d1c-ab85-62e2817e8919")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -2718,7 +2751,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "44627933-daf1-4ee0-9595-774a152a7dff")
@@ -2781,6 +2814,9 @@
 				)
 			)
 		)
+		(path "/b443d310-0fc5-4755-9921-00b3fb0713f4")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -2865,7 +2901,7 @@
 			)
 		)
 	)
-	(footprint "C_1206_3216Metric"
+	(footprint "unoq_power_shield:C_1206_3216Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "45f8ccea-5b81-4e63-9900-b4afb6517e5e")
@@ -2928,6 +2964,9 @@
 				)
 			)
 		)
+		(path "/f0e987d4-0f1e-4fcb-8bae-46d0d3a6da8e")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -3012,7 +3051,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "46a4aec4-f6a3-401a-9539-8155c57e0727")
@@ -3075,6 +3114,9 @@
 				)
 			)
 		)
+		(path "/7727a772-7928-465b-95b2-c01541db4303")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -3160,7 +3202,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "48f7e7ba-9e65-41d2-82ee-51dda92005ac")
@@ -3223,6 +3265,9 @@
 				)
 			)
 		)
+		(path "/8aed1a8c-48ba-4d0a-bf42-e0d31cc43fd7")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -3355,7 +3400,7 @@
 				)
 			)
 		)
-		(attr smd exclude_from_pos_files exclude_from_bom)
+		(attr smd board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)
@@ -3379,7 +3424,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "PinHeader_1x10_P2.54mm_Vertical"
+	(footprint "unoq_power_shield:PinHeader_1x10_P2.54mm_Vertical"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "508355ff-a877-4450-9780-9f10e089267c")
@@ -3442,7 +3487,10 @@
 				)
 			)
 		)
-		(attr through_hole)
+		(path "/b59d6617-5772-4d8e-9fcb-c04e2a4abd73")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
+		(attr through_hole dnp)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
 			(start 1.38 1.27)
@@ -3679,7 +3727,7 @@
 			)
 		)
 	)
-	(footprint "SOT-23"
+	(footprint "unoq_power_shield:SOT-23"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "5165b846-901f-4e84-9e95-ef36bd354db5")
@@ -3742,6 +3790,9 @@
 				)
 			)
 		)
+		(path "/96b8ddae-786b-441a-9145-e5cc863fc9fe")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -4094,7 +4145,7 @@
 				)
 			)
 		)
-		(attr smd exclude_from_pos_files exclude_from_bom)
+		(attr smd board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)
@@ -4118,7 +4169,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "5f9be37d-0b1d-43b9-a456-d2d31898b398")
@@ -4181,6 +4232,9 @@
 				)
 			)
 		)
+		(path "/fad0642a-de2a-4a95-8cbe-2242d42bb21c")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -4265,7 +4319,7 @@
 			)
 		)
 	)
-	(footprint "R_2512_6332Metric"
+	(footprint "unoq_power_shield:R_2512_6332Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "624aae1e-30a7-4dbe-a54c-ce481f897c3f")
@@ -4328,6 +4382,9 @@
 				)
 			)
 		)
+		(path "/e936ce65-d083-4f82-8f30-387c3acc712c")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -4462,7 +4519,7 @@
 				)
 			)
 		)
-		(attr smd exclude_from_pos_files exclude_from_bom)
+		(attr smd board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)
@@ -4486,7 +4543,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "SOT-23"
+	(footprint "unoq_power_shield:SOT-23"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "6d640867-107d-42b5-a60f-accf80bf2461")
@@ -4549,6 +4606,9 @@
 				)
 			)
 		)
+		(path "/63a741c6-ce3e-4b25-a570-15c7de24ba63")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -4853,7 +4913,7 @@
 			)
 		)
 	)
-	(footprint "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+	(footprint "unoq_power_shield:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "70b3bb40-b8a7-42c4-92fa-5fb178881802")
@@ -4916,6 +4976,9 @@
 				)
 			)
 		)
+		(path "/4c77f3ff-bfb8-4b73-ac37-db23d95cfe99")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -5271,7 +5334,7 @@
 			)
 		)
 	)
-	(footprint "XL1615RGBC"
+	(footprint "unoq_power_shield:XL1615RGBC"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "70f8c999-fde1-4ab2-ac7c-e39d9888a868")
@@ -5321,6 +5384,9 @@
 				)
 			)
 		)
+		(path "/615badbc-49f9-4676-b6ad-2daa4db6d953")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
@@ -5445,7 +5511,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "SWPA6045S"
+	(footprint "unoq_power_shield:SWPA6045S"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "7af36093-a9d5-4900-9309-f06b8faa9141")
@@ -5495,6 +5561,9 @@
 				)
 			)
 		)
+		(path "/e154c9c1-8538-4392-9acb-998505a398e2")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -5613,7 +5682,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "C_0603_1608Metric"
+	(footprint "unoq_power_shield:C_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "83c703b3-55c6-4cc3-bd31-d2d91ea488ec")
@@ -5676,6 +5745,9 @@
 				)
 			)
 		)
+		(path "/c9b9e15a-c738-4754-a0d3-fc40478b8116")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -5761,7 +5833,7 @@
 			)
 		)
 	)
-	(footprint "C_1206_3216Metric"
+	(footprint "unoq_power_shield:C_1206_3216Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "894e53a4-db31-4f11-b3b1-f7b0c6997b4c")
@@ -5824,6 +5896,9 @@
 				)
 			)
 		)
+		(path "/8276c9ab-858c-41ea-ae1f-e5873ce698c0")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -5909,7 +5984,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "89a91f41-1100-4217-8b71-a958c2eead0e")
@@ -5972,6 +6047,9 @@
 				)
 			)
 		)
+		(path "/9fa7ec2a-dd1a-467e-9c79-458467bbb5a3")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -6057,7 +6135,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "8e7f8c61-c07a-4ed6-a41e-4b457514cd8d")
@@ -6120,6 +6198,9 @@
 				)
 			)
 		)
+		(path "/6edd24a8-398e-418b-b7db-25bbb7fb9fcd")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -6205,7 +6286,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "939448a3-a1f6-48a4-a3ef-17fbcffc447c")
@@ -6268,6 +6349,9 @@
 				)
 			)
 		)
+		(path "/b9804bf6-6865-4bb8-abf9-6de93bb87f96")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -6352,7 +6436,7 @@
 			)
 		)
 	)
-	(footprint "MSOP-10_3x3mm_P0.5mm"
+	(footprint "unoq_power_shield:MSOP-10_3x3mm_P0.5mm"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "99a88825-cc6a-40cd-b72e-41eb1032fbfd")
@@ -6415,6 +6499,9 @@
 				)
 			)
 		)
+		(path "/3adaf574-1079-451b-9eaf-e8fd9f474884")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -6731,7 +6818,7 @@
 			)
 		)
 	)
-	(footprint "PinHeader_1x06_P2.54mm_Vertical"
+	(footprint "unoq_power_shield:PinHeader_1x06_P2.54mm_Vertical"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "99c48ab0-a177-4aee-82a5-f6b8c39aeae3")
@@ -6794,7 +6881,10 @@
 				)
 			)
 		)
-		(attr through_hole)
+		(path "/1748e3bb-93fd-453d-a006-165561fba3d6")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
+		(attr through_hole dnp)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
 			(start -1.38 -1.38)
@@ -6995,7 +7085,7 @@
 			)
 		)
 	)
-	(footprint "PinHeader_1x08_P2.54mm_Vertical"
+	(footprint "unoq_power_shield:PinHeader_1x08_P2.54mm_Vertical"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "a6111cc4-fc65-4355-9f5f-79443be84b93")
@@ -7058,7 +7148,10 @@
 				)
 			)
 		)
-		(attr through_hole)
+		(path "/721da8df-1b9b-4e21-9ca9-40fee59ee5bb")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
+		(attr through_hole dnp)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
 			(start -1.38 -1.38)
@@ -7278,7 +7371,7 @@
 			)
 		)
 	)
-	(footprint "SOIC-8_3.9x4.9mm_P1.27mm"
+	(footprint "unoq_power_shield:SOIC-8_3.9x4.9mm_P1.27mm"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "abcc10f2-5910-4d92-9880-f66b7e48e608")
@@ -7341,6 +7434,9 @@
 				)
 			)
 		)
+		(path "/0f4ed60b-3233-4745-ae2f-cbb367822223")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -7642,7 +7738,7 @@
 			)
 		)
 	)
-	(footprint "C_0603_1608Metric"
+	(footprint "unoq_power_shield:C_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "b050b0a2-f146-4965-bceb-27d05e45739a")
@@ -7705,6 +7801,9 @@
 				)
 			)
 		)
+		(path "/d8a5ae36-3590-43c1-ba0b-d04cbeb49b2f")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -7790,7 +7889,7 @@
 			)
 		)
 	)
-	(footprint "KF301_5.0_2P"
+	(footprint "unoq_power_shield:KF301_5.0_2P"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "b4c511e4-c6e3-4f7c-9f44-cbb38e48ae82")
@@ -7840,6 +7939,9 @@
 				)
 			)
 		)
+		(path "/be7312bb-df6a-4b7b-a9c0-bbe0241b14b7")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr through_hole)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -7943,7 +8045,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "KF301_5.0_2P"
+	(footprint "unoq_power_shield:KF301_5.0_2P"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "bc0516df-4311-4e67-8816-f9ea2bb34397")
@@ -7993,6 +8095,9 @@
 				)
 			)
 		)
+		(path "/26acbf47-2210-48ad-9f55-7b8e8ffa7aae")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr through_hole)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -8095,7 +8200,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "SOT-23"
+	(footprint "unoq_power_shield:SOT-23"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "bf5f5a5d-92a8-4217-83ab-e94b4066cb0b")
@@ -8158,6 +8263,9 @@
 				)
 			)
 		)
+		(path "/ebb2f9b8-c879-4700-8cb0-91a400ac7c44")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -8462,7 +8570,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "c24c572b-10b6-4f10-8816-d34836874bef")
@@ -8525,6 +8633,9 @@
 				)
 			)
 		)
+		(path "/4d3ec242-e0b8-4bb9-b5d2-15910e24539c")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -8609,7 +8720,7 @@
 			)
 		)
 	)
-	(footprint "C_1206_3216Metric"
+	(footprint "unoq_power_shield:C_1206_3216Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "c7e26566-38ad-48ae-bfb9-266609ca7f3d")
@@ -8672,6 +8783,9 @@
 				)
 			)
 		)
+		(path "/4423519e-188e-4336-9048-30d9d9056a1f")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -8757,7 +8871,7 @@
 			)
 		)
 	)
-	(footprint "D_SOD-123"
+	(footprint "unoq_power_shield:D_SOD-123"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "ca8ad778-4484-4141-96be-9d3820600991")
@@ -8812,6 +8926,9 @@
 				)
 			)
 		)
+		(path "/907c434b-fe29-4a1f-93d8-ee9511554c7d")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -9085,7 +9202,7 @@
 				)
 			)
 		)
-		(attr exclude_from_pos_files exclude_from_bom)
+		(attr board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)
@@ -9107,7 +9224,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "d61e2318-36a9-4be6-a222-2b74bc623b51")
@@ -9170,6 +9287,9 @@
 				)
 			)
 		)
+		(path "/e045ba03-d218-477d-9851-eaf981149ece")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -9254,7 +9374,7 @@
 			)
 		)
 	)
-	(footprint "C_0603_1608Metric"
+	(footprint "unoq_power_shield:C_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "d6b3be2e-9512-47ec-9950-24941c4a7764")
@@ -9317,6 +9437,9 @@
 				)
 			)
 		)
+		(path "/71ffb73a-c498-4cc4-b883-1b2bcf8bdbfa")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -9402,7 +9525,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "da911c70-d8c9-4a9a-aa0e-5d71d57824f1")
@@ -9465,6 +9588,9 @@
 				)
 			)
 		)
+		(path "/72983154-582d-4967-81eb-4337f177c88c")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -9600,7 +9726,7 @@
 				)
 			)
 		)
-		(attr exclude_from_pos_files exclude_from_bom)
+		(attr board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)
@@ -9622,7 +9748,7 @@
 		)
 		(embedded_fonts no)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "dfd2f48b-d7a7-4d3b-9028-213fc1fe7967")
@@ -9685,6 +9811,9 @@
 				)
 			)
 		)
+		(path "/fda78bf4-2e5d-499c-8a1d-fb6d989ca436")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -9769,7 +9898,7 @@
 			)
 		)
 	)
-	(footprint "PinHeader_1x08_P2.54mm_Vertical"
+	(footprint "unoq_power_shield:PinHeader_1x08_P2.54mm_Vertical"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "e14b3beb-a2e4-406e-a002-8fef70d9be6c")
@@ -9832,7 +9961,10 @@
 				)
 			)
 		)
-		(attr through_hole)
+		(path "/61733ada-658e-4a22-989c-057107e3b667")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
+		(attr through_hole dnp)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
 			(start 1.38 1.27)
@@ -10051,7 +10183,7 @@
 			)
 		)
 	)
-	(footprint "C_0603_1608Metric"
+	(footprint "unoq_power_shield:C_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "e1716b31-6f36-49d7-a87d-49af150a1d86")
@@ -10114,6 +10246,9 @@
 				)
 			)
 		)
+		(path "/b8c95468-0ae5-4f58-bf19-c8d3a60b8f3d")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -10199,7 +10334,7 @@
 			)
 		)
 	)
-	(footprint "C_0603_1608Metric"
+	(footprint "unoq_power_shield:C_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "e258d7a8-074e-4834-a146-4987fc22e7e6")
@@ -10262,6 +10397,9 @@
 				)
 			)
 		)
+		(path "/de70b5e0-5837-431d-849f-a5b5728697d0")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -10346,7 +10484,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "e3c68e40-fa54-4fa7-8919-6441165fa97f")
@@ -10409,6 +10547,9 @@
 				)
 			)
 		)
+		(path "/4c0b4c5d-b297-45b4-b4cf-346836145bff")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -10493,7 +10634,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "ef92f3e6-b7c2-422c-a8e8-26fffabe38e2")
@@ -10556,6 +10697,9 @@
 				)
 			)
 		)
+		(path "/844bb708-30ab-40fd-95ec-9383aa57f929")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -10641,7 +10785,7 @@
 			)
 		)
 	)
-	(footprint "R_0603_1608Metric"
+	(footprint "unoq_power_shield:R_0603_1608Metric"
 		(locked yes)
 		(layer "F.Cu")
 		(uuid "f37a6fcd-913f-4add-980a-643b03579d45")
@@ -10704,6 +10848,9 @@
 				)
 			)
 		)
+		(path "/dc5662e8-d6ff-4852-85a3-00b0b6fa7526")
+		(sheetname "unoq-power-shield")
+		(sheetfile "unoq-power-shield.kicad_sch")
 		(attr smd)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_line
@@ -10839,7 +10986,7 @@
 				)
 			)
 		)
-		(attr exclude_from_pos_files exclude_from_bom)
+		(attr board_only exclude_from_pos_files exclude_from_bom)
 		(duplicate_pad_numbers_are_jumpers no)
 		(fp_circle
 			(center 0 0)

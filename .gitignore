@@ -22,3 +22,12 @@ __pycache__/
 # no use for one (route.py copies only the .kicad_pcb).
 */pre_route.kicad_pro
 **/pre_route.kicad_pro
+
+# What KiCad drops beside a project it opens. A reviewer opening a release
+# makes these; verify_release ignores them and so does git.
+**/release/**/*.kicad_prl
+**/release/**/*-backups/
+**/release/**/fp-info-cache
+**/release/**/*.lck
+# check_parity's DRC sample reports, if a run is killed mid-sample
+.parity.*.json

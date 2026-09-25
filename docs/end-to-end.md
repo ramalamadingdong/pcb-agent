@@ -90,13 +90,14 @@ Do not point this at your own design yet. Build the example, which is what
 ```bash
 make build      # netlist -> schematic -> board -> place -> zones -> silk
 make route      # snapshot -> Freerouting -> completion -> DRC x5
-make export     # fab package
-make check      # the gerber checker, on the real export
+make export     # fab package (refuses unless check_parity passes)
+make check      # placement, parity, and the gerber checker on the real export
 ```
 
 You are looking for the same gates the example signed off on: **0
 unconnected, 0 clearance violations** identical across 5 consecutive DRC
-runs, `validate_gerbers` **14 passed / 0 failed**, ERC clean. The 17
+runs, `validate_gerbers` **15 passed / 0 failed** (pad nets included),
+`check_parity` all PASS, ERC clean. The 17
 residual DRC items are expected — they are form-factor and
 courtyard-graze artifacts, each one explained in
 [`examples/unoq-power-shield/rev-1-plan.md`](../examples/unoq-power-shield/rev-1-plan.md).
@@ -184,9 +185,11 @@ Nothing ships until all of these hold:
 
 - schematic round-trip diff clean (the build fails otherwise)
 - ERC clean, DRC ×5 with zero errors and every warning explained
-- `make check` green, SKIPs investigated
+- `make check` green, SKIPs investigated, `check_parity` all PASS
 - every part re-verified in stock **at order time**, not at design time
-- the exact ordered files committed byte-for-byte
+- `make release`, commit `release/rev-N/`, and `make verify-release`.
+  That directory is the exact ordered files, byte for byte, and the
+  project humans review. See [review.md](review.md).
 
 Anything you catch by hand on the way becomes a line in `board.toml`, so
 the checker catches it for you next time. That is the whole point of the

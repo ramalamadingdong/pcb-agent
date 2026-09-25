@@ -1,0 +1,22 @@
+{
+  "board": "unoq-power-shield.kicad_pcb",
+  "schematic": "unoq-power-shield.kicad_sch",
+  "ok": true,
+  "drc_runs": 5,
+  "kicad_version": "10.0.5",
+  "kicad_parity": [],
+  "shorts": [],
+  "unconnected": [],
+  "independent_diff": [],
+  "parts_linked": 49,
+  "board_only": [
+    "FID1",
+    "FID2",
+    "FID3",
+    "H1",
+    "H2",
+    "H3",
+    "H4"
+  ],
+  "pads_compared": 159
+}

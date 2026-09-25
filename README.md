@@ -105,6 +105,7 @@ PCBWay. MIT. This is the install that matters most.
 /build         netlist.csv -> schematic -> board -> placement -> zones -> silk
 /route         snapshot -> Freerouting -> DRC x5 -> gerbers
 /check         validate the board AND the fab package against board.toml
+make release   freeze the reviewed project + ordered package, hashed
 /doctor        is this machine able to run any of it
 ```
 
@@ -122,6 +123,13 @@ the placement loop, and the traps this repo already paid for.
 ## What's here and what isn't
 
 Working now:
+
+- **Review what ships.** `check_parity` proves the schematic is the final
+  routed board after every post-route pass. It runs KiCad's own parity,
+  an independent netlist-vs-pads diff, and DRC for shorts. `make release`
+  freezes that project with the fab package under `release/rev-N/`, and
+  `verify_release` proves later that it still regenerates the same
+  package. [docs/review.md](docs/review.md)
 
 - **`scripts/validate_gerbers.py`** — the level-4 checker. Reads exported
   gerbers and drill files as text. No dependencies, no install, doesn't need

@@ -16,6 +16,10 @@ Watch for three things and stop if you see any of them:
 - **An empty net table** after any board write. `grep -cE '^\s*\(net [0-9]+ '`
   must be non-zero. If it's zero the router will report "nets to route: 0"
   and do nothing, with no error anywhere.
+- **`link_schematic` refusing a footprint.** It names any footprint with no
+  schematic symbol that `board.toml` doesn't declare as a mounting hole or
+  fiducial. Some pass added a part. Find that pass; don't declare the part
+  to make the error go away.
 - **Collapsed pads** after the optimiser. If both pads of a two-pad passive
   sit at the same coordinate, `repair_pads` didn't run or didn't restore
   rotation.

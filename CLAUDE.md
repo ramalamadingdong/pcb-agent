@@ -10,7 +10,7 @@ The KiCad project is a **build output**. To change the circuit, edit a row and
 rebuild.
 
 ```
-netlist.csv  ->  build  ->  board  ->  snapshot  ->  route  ->  gerbers  ->  check
+netlist.csv  ->  build  ->  board  ->  snapshot  ->  route  ->  parity  ->  gerbers  ->  check  ->  release
 ```
 
 ## Hard rules
@@ -55,6 +55,12 @@ It's what the factory builds.
 **Recheck the numbers in your own plan.** They were written before you knew
 what you know now. When one changes, write down why.
 
+**The schematic a human reviews is the board that ships.** Never update
+the schematic from the board. If a post-route fix needs to change the
+circuit, change `netlist.csv` and rebuild both documents. `check_parity`
+runs on the final board and export refuses if it fails. Reviewers open
+`release/rev-N/`, never a fresh rebuild. See `docs/review.md`.
+
 **Save the exact files you order.** Not a regenerated approximation — the
 literal package, committed. Auditing an order only means something if you can
 prove the zip you're reading is what shipped.
@@ -80,6 +86,14 @@ Don't remove these, and don't reorder them.
   doesn't touch them. The fab clips anything off board, so without this the
   boards print bare.
 
+- **`link_schematic` runs last in `build`.** `kct create-pcb` writes no
+  symbol links (`path`, `sheetname`, `sheetfile`), no library nickname
+  and no DNP flag. KiCad then treats the schematic and the board as
+  unrelated: 61 parity errors on the example, no cross-probing, and F8
+  proposing to delete every placed part. The pass links each footprint
+  and marks the holes and fiducials `board.toml` declares as "Not in
+  schematic". It fails on any other footprint that has no symbol.
+
 ## Routing
 
 Freerouting, `-mt 1`, foreground, version pinned to your Java.
@@ -96,7 +110,10 @@ a completion pass on the remainder.
 
 Five levels, each catching what the one above passes:
 
-0. Round-trip diff of the generated schematic against `netlist.csv`
+0. Round-trip diff of the generated schematic against `netlist.csv`.
+   Then, on the final board: `check_parity` (KiCad parity, an
+   independent netlist-vs-pads diff, and DRC for shorts and unconnected
+   copper), plus the gerbers' X2 pad nets against the same netlist.
 1. ERC — cheap, catches little, run it anyway
 2. DRC, **sampled 5+ times**. It isn't deterministic; compare which violations
    appear, not the count. Fill zones with the real filler first, or the

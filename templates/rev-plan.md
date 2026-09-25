@@ -36,7 +36,8 @@ Numbers that changed from the last revision, and why:
 - [ ] Schematic round-trip diff clean against `netlist.csv`
 - [ ] ERC clean
 - [ ] DRC run 5+ times, comparing which violations appear
-- [ ] `validate_gerbers` PASS
+- [ ] `check_parity` PASS on the final board (schematic is the board that ships)
+- [ ] `validate_gerbers` PASS, pad nets included (`--kicad-netlist`)
 - [ ] Every part in stock, re-verified at order time
-- [ ] Ordered files committed byte-for-byte
+- [ ] `make release` committed; `make verify-release` PASS; reviewers opened `release/rev-N/`
 - [ ] (board-specific gates here)
