@@ -1,0 +1,160 @@
+Net,RefDes,Pin,PinName,Note
+GND,J1,1,GND,"VIN screw terminal negative; KF301-5.0-2P (docs/datasheets/KF301-5.0-2P.pdf)"
+VIN_RAW,J1,2,VIN,"7-24 V in, matches UNO Q DC_IN range (ABX00162 datasheet 3.2 p.11)"
+VIN_RAW,Q5,5,D,"AO4407A drain = raw input; body diode conducts on correct polarity until FET enhances (AO4407A.pdf p.1 top view: pins 5-8 D)"
+VIN_RAW,Q5,6,D,AO4407A.pdf p.1
+VIN_RAW,Q5,7,D,AO4407A.pdf p.1
+VIN_RAW,Q5,8,D,AO4407A.pdf p.1
+VIN_PROT,Q5,1,S,"protected rail out (AO4407A.pdf p.1: pins 1-3 S)"
+VIN_PROT,Q5,2,S,AO4407A.pdf p.1
+VIN_PROT,Q5,3,S,AO4407A.pdf p.1
+Q5_GATE,Q5,4,G,"pulled to GND through R2; zener D2 clamps VGS - abs max +/-25 V leaves 1 V margin at 24 V unclamped (AO4407A.pdf p.1)"
+Q5_GATE,R2,1,~,"10k gate pulldown (C25804)"
+GND,R2,2,~,
+Q5_GATE,D2,2,A,"BZT52C12 anode to gate; clamps |VGS| to ~12 V (BZT52C12.pdf; cathode = marked end - verify footprint pad1=K at build)"
+VIN_PROT,D2,1,K,"cathode to source (VIN_PROT)"
+VIN_PROT,R1,1,~,"10 mOhm 3 W shunt, supply side (HoYLR2512-3W-10mR.pdf); 40 mV at 4 A = 49% of INA226 range"
+VIN,R1,2,~,"load side - everything downstream is measured, UNO Q included"
+VIN_PROT,U2,10,IN+,"INA226 Table 4-1: connect to supply side of shunt"
+VIN,U2,9,IN-,"INA226 Table 4-1: connect to load side of shunt"
+VIN,U2,8,VBUS,"bus voltage sense, load side (INA226 Table 4-1)"
+GND,U2,7,GND,INA226 Table 4-1
+3V3_UNO,U2,6,VS,"2.7-5.5 V supply (INA226 Table 4-1); from UNO Q +3V3 OUT header pin; IN+/IN- common-mode is independent of VS per ds so an unpowered INA is safe at 24 V"
+SCL_3V3,U2,5,SCL,"I2C2 bus - UNO Q already has 2.2k pull-ups (ABX00162 schematics sheet 20 R2642/R2643); shield adds none"
+SDA_3V3,U2,4,SDA,INA226 Table 4-1
+ALERT_3V3,U2,3,Alert,"open-drain (INA226 Table 4-1); to ~D3 - safe for the 3.6V-max pin because it never exceeds 3.3 V"
+GND,U2,2,A0,"address 0x40 = A1:GND A0:GND (INA226 Table 6-2)"
+GND,U2,1,A1,INA226 Table 6-2
+3V3_UNO,C10,1,~,"100nF VS bypass (C14663)"
+GND,C10,2,~,
+ALERT_3V3,R16,1,~,"10k pull-up to 3V3 for the open-drain ALERT (C25804)"
+3V3_UNO,R16,2,~,
+VIN,U1,2,VIN,"TPS54331 3.5-28 V input (TPS54331DDAR.pdf 5 Pin Configuration; 6.3 abs max 30 V)"
+BOOT,U1,1,BOOT,"bootstrap; 100nF to PH (ds front-page application circuit)"
+EN,U1,3,EN,"UVLO divider: start 5.68 V / stop 5.32 V via Eq1/Eq2 (ds 7.3.4): Ren1=120k Ren2=33k"
+SS,U1,4,SS,"10nF -> 4 ms slow start, Eq3: Tss=Css*0.8/2 (ds 7.3.5); must be 1-10 ms, <=27 nF"
+FB,U1,5,VSENSE,"divider 27k/5.1k -> 5.035 V (ds Eq4/5, Vref 0.8 V)"
+COMP,U1,6,COMP,"Type II comp per ds 8.2.2.7: RZ 24k, CZ 1nF, CP 100pF at Fco 20 kHz"
+GND,U1,7,GND,ds 5 Pin Configuration
+PH,U1,8,PH,ds 5 Pin Configuration
+GND,U1,9,PowerPAD,"must tie to GND pin for proper operation (ds 5, pin 9 note); thermal vias to the In1 GND plane - the thermal_vias rule in board.toml"
+VIN,R3,1,~,"Ren1 120k VIN->EN (C25808; ds Eq1: (Vstart-Vstop)/3uA)"
+EN,R3,2,~,
+EN,R4,1,~,"Ren2 33k EN->GND (C4216; ds Eq2)"
+GND,R4,2,~,
+BOOT,C4,1,~,"100nF boot cap (C14663)"
+PH,C4,2,~,
+SS,C5,1,~,"10nF slow-start (C57112)"
+GND,C5,2,~,
+5V,R5,1,~,"27k FB top (C22967); 0.8*(1+27/5.1)=5.035 V"
+FB,R5,2,~,
+FB,R6,1,~,"5.1k FB bottom (C23186)"
+GND,R6,2,~,
+COMP,R7,1,~,"RZ 24k (C23352; ds Eq26 gives 24.2k at Fco 20 kHz, Co 37uF derated)"
+COMPZ,R7,2,~,
+COMPZ,C6,1,~,"CZ 1nF (C1588; ds Eq27, Fz 6.4 kHz)"
+GND,C6,2,~,
+COMP,C7,1,~,"CP 100pF (C14858; ds Eq28, Fp 62 kHz)"
+GND,C7,2,~,
+VIN,C1,1,~,"4.7uF/50V X7R input cap x2 per ds 8.2.2.4 example (CL31B475KBHNNNE C51205 - extended, the only non-Basic passives; 50 V rating is not negotiable at 24 V in)"
+GND,C1,2,~,
+VIN,C2,1,~,"4.7uF/50V X7R (C51205)"
+GND,C2,2,~,
+VIN,C3,1,~,"100nF HF bypass (C14663; ds: small hf cap alongside bulk)"
+GND,C3,2,~,
+PH,D1,1,K,"SS34 cathode to PH - catch diode for the non-synchronous buck (SS34.pdf: color band = cathode; KiCad D_SMA pad 1 = cathode; 40 V > 24 V in, Vf 0.55 V at 3 A)"
+GND,D1,2,A,
+PH,L1,1,~,"SWPA6045S100MT 10uH (SWPA-series-Sunlord.pdf 6045S100MT row: Isat 3.2 A > 2.43 A worst-case peak, Irms 2.45 A, DCR 62 mOhm)"
+5V,L1,2,~,
+5V,C8,1,~,"22uF/25V X5R output x2 (CL31A226KAHNNNE C12891 Basic; ds 8.2.2.6: >=2.55uF for 25 kHz crossover, ripple 5 mV)"
+GND,C8,2,~,
+5V,C9,1,~,"22uF/25V (C12891)"
+GND,C9,2,~,
+5V,J2,1,5V,"5 V out screw terminal, 2 A budget (KF301-5.0-2P)"
+GND,J2,2,GND,
+3V3_UNO,Q1,1,G,"BSS138 gate to 3V3 - the reference rail (BSS138LT1G.pdf p.1: SOT-23 style 21, 1=G 2=S 3=D; Vgs(th) 0.5-1.5 V)"
+LV1,Q1,2,S,"3.3 V side, to UNO D2"
+HV1,Q1,3,D,"5 V side"
+3V3_UNO,Q2,1,G,BSS138LT1G.pdf p.1
+LV2,Q2,2,S,"to UNO D4 - D4 doubles as FDCAN1_TX, CAN unusable while this channel is wired (ABX00162 full-pinout p.1)"
+HV2,Q2,3,D,
+3V3_UNO,Q3,1,G,BSS138LT1G.pdf p.1
+LV3,Q3,2,S,"to UNO D7"
+HV3,Q3,3,D,
+3V3_UNO,Q4,1,G,BSS138LT1G.pdf p.1
+LV4,Q4,2,S,"to UNO D8"
+HV4,Q4,3,D,
+LV1,R8,1,~,"10k pull-up to 3V3 (C25804) - the LV-side half of the classic bidirectional shifter"
+3V3_UNO,R8,2,~,
+LV2,R9,1,~,10k (C25804)
+3V3_UNO,R9,2,~,
+LV3,R10,1,~,10k (C25804)
+3V3_UNO,R10,2,~,
+LV4,R11,1,~,10k (C25804)
+3V3_UNO,R11,2,~,
+HV1,R12,1,~,"10k pull-up to 5V (C25804); 10k x ~30pF = ~0.3us rise, usable to ~300 kHz - documented limit, not for SPI/NeoPixels"
+5V,R12,2,~,
+HV2,R13,1,~,10k (C25804)
+5V,R13,2,~,
+HV3,R14,1,~,10k (C25804)
+5V,R14,2,~,
+HV4,R15,1,~,10k (C25804)
+5V,R15,2,~,
+RGB_R,D3,1,R_K,"XL-1615RGBC-RF p.8: pin1 R cathode, pin2 common ANODE, pin3 G, pin4 B; IF max 20 mA/die (p.3)"
+5V,D3,2,A,"common anode to shield 5V; active-low drive matches the UNO Q's own LED convention (ABX00162 datasheet 5)"
+RGB_G,D3,3,G_K,XL-1615RGBC-RF p.8
+RGB_B,D3,4,B_K,XL-1615RGBC-RF p.8
+RGB_R,R17,1,~,"330R (C23138): (5-Vf-VOL)/330 = 5-10 mA across the three dies"
+UNO_D9,R17,2,~,"~D9 = PB8 TIM4_CH3 PWM (full-pinout p.1)"
+RGB_G,R18,1,~,330R (C23138)
+UNO_D10,R18,2,~,"~D10 = PB9 TIM4_CH4 (full-pinout p.1)"
+RGB_B,R19,1,~,330R (C23138)
+UNO_D11,R19,2,~,"~D11 = PB15 TIM1_CH3N (full-pinout p.1)"
+GND,J3,1,GND,"Qwiic in (SM04B-SRSS-TB, JST eSH drawing); Qwiic standard order GND/3V3/SDA/SCL"
+3V3_UNO,J3,2,3V3,
+SDA_3V3,J3,3,SDA,"I2C2 - same bus as the INA226 and D20/D21"
+SCL_3V3,J3,4,SCL,
+GND,J3,MP,SHIELD,"mounting tabs to GND"
+GND,J4,1,GND,"Qwiic out (daisy-chain)"
+3V3_UNO,J4,2,3V3,
+SDA_3V3,J4,3,SDA,
+SCL_3V3,J4,4,SCL,
+GND,J4,MP,SHIELD,
+HV1,J5,1,IO1,"5 V level-shifted IO header, DNP - user fits a 1x6 2.54 mm header"
+HV2,J5,2,IO2,
+HV3,J5,3,IO3,
+HV4,J5,4,IO4,
+5V,J5,5,5V,
+GND,J5,6,GND,
+UNO_BOOT,J10,1,BOOT,"UNO Q power header, top pin at fab-frame Y=40.64 (drill file T04 + full-pinout p.1); passthrough only"
+UNO_IOREF,J10,2,IOREF,"output only, never back-fed (ABX00162 datasheet 9.7) - passthrough"
+UNO_RESET,J10,3,RESET,passthrough
+3V3_UNO,J10,4,+3V3,"UNO Q 3.3 V out - powers INA226 VS, shifter gates and pull-ups"
+5V_USB,J10,5,+5V,"USB VBUS passthrough (ds 9.7: power only) - DELIBERATELY not tied to the shield 5V rail"
+GND,J10,6,GND,
+GND,J10,7,GND,
+VIN,J10,8,VIN,"feeds the UNO Q's own 7-24 V input (ds 3.1) - downstream of shunt, so the Q's draw is measured"
+UNO_A0,J11,1,A0,"analog strip Y=17.78 down (drill T04); direct ADC, not 5 V-tolerant (ds 9.7 note) - passthrough"
+UNO_A1,J11,2,A1,passthrough
+UNO_A2,J11,3,A2,passthrough
+UNO_A3,J11,4,A3,passthrough
+UNO_A4,J11,5,A4,"also I2C3 - pull-ups to 3.3 V only per ds 9 note; untouched here"
+UNO_A5,J11,6,A5,passthrough
+UNO_D0,J12,1,D0,"digital low strip Y=5.08 up (drill T04); UART - left free"
+UNO_D1,J12,2,D1,passthrough
+LV1,J12,3,D2,"shifted channel 1 (PB3)"
+ALERT_3V3,J12,4,~D3,"INA226 ALERT - PB0 is TT-type, 3.6 V max in ANY mode (ds 9.6 note); an open-drain 3.3 V signal is exactly what it can take"
+LV2,J12,5,D4,"shifted channel 2 (PA12/FDCAN1_TX)"
+UNO_D5,J12,6,~D5,passthrough
+UNO_D6,J12,7,~D6,passthrough
+LV3,J12,8,D7,"shifted channel 3 (PB2)"
+LV4,J13,1,D8,"digital high strip, bottom pin Y=26.92 (drill T04); shifted channel 4 (PB4)"
+UNO_D9,J13,2,~D9,"RGB red (via R17)"
+UNO_D10,J13,3,~D10,"RGB green"
+UNO_D11,J13,4,~D11,"RGB blue"
+UNO_D12,J13,5,D12,"SPI2 MISO - left free for JSPI users (full-pinout p.1)"
+UNO_D13,J13,6,D13,passthrough
+GND,J13,7,GND,
+UNO_AREF,J13,8,AREF,"analog ref pin, not a GPIO (ds 9.6) - passthrough"
+SDA_3V3,J13,9,D20,"I2C2 SDA PB11; UNO Q carries the 2.2k pulls (schematics sheet 20)"
+SCL_3V3,J13,10,D21,"I2C2 SCL PB10, top pin at Y=49.78"

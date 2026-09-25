@@ -1,0 +1,12 @@
+{
+  "revision": "1",
+  "project": "unoq-power-shield.kicad_pro",
+  "git": {
+    "commit": "06ea7a0d8188ff939c0324dec14331dbadf9f4f9",
+    "dirty": false
+  },
+  "kicad_version": "10.0.5",
+  "parity_ok": true,
+  "open_this": "unoq-power-shield.kicad_pro",
+  "note": "Review only. Do not save from KiCad; verify with scripts/verify_release.py. Changes go in netlist.csv / board.toml and a new revision."
+}
