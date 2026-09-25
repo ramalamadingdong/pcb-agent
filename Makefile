@@ -56,7 +56,9 @@ doctor:
 # keepouts before silk (silk avoids the declared rectangles). direct_connect
 # runs twice: `pre` snaps Direct-tagged parts onto anchored targets so
 # place.py can hold them, `post` snaps the rest once the optimiser and
-# flip_sides have put their targets where they stay. link_schematic runs
+# flip_sides have put their targets where they stay. pack_blocks then
+# tetris-legalises every free part -- a free target and its Direct parts as
+# one rigid block -- to the nearest overlap-free spot. link_schematic runs
 # last, after every pass that adds a footprint and after the kct fill: it
 # ties each footprint to its schematic symbol so the project a human opens
 # is one design to KiCad, not two files that happen to agree.
@@ -71,6 +73,7 @@ build:
 	$(RUN)$(P)/place.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --rounds $(ROUNDS)
 	$(RUN)$(P)/flip_sides.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/direct_connect.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --stage post
+	$(RUN)$(P)/pack_blocks.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --warn-only
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/fanout.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)

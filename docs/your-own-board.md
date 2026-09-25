@@ -39,6 +39,7 @@ numbers. Never write a KiCad page coordinate into board.toml.
 | `[parts.<REF>]`, `[[part_rules]]` | make_libs, generate_schematic | symbol + footprint per refdes (rules by prefix for jellybeans, per-ref overrides for everything else) |
 | `[[floorplan.place]]` | floorplan, place | hand placements, locked; see the loop below |
 | `[schematic] pack_width_mm` | generate_schematic | width the schematic's blocks are packed into (default 370, A3 landscape); the paper grows to fit the height |
+| `[pack]` | pack_blocks | after placement and the Direct snap, every free part is tetris-legalised to the nearest overlap-free spot (a free IC plus its Direct parts move as one rigid block); `step_mm`, `gap_mm`, `rotate_after_mm`, `rotate` |
 | `[direct]` | direct_connect | `overlap_mm` / `clearance_mm` for `Direct`-tagged netlist rows: parts placed pad-on-pad against a pin already on their net. Every pair shows up in DRC as an expected `courtyards_overlap`, listed in the pass's JSON |
 | `[mounting_holes]`, `[fiducials]` | passes AND checker | positions place them; count/diameter checks them in the gerbers |
 | `[[keepouts]]` | add_keepouts, silk, router passes, both checkers | one rectangle feeds the rule area, the silk dodge, the router fences, the board check and the gerber check |

@@ -15,7 +15,8 @@ Board cases:
           DRC shows the tagged pins connected and C10 in exactly one
           courtyards_overlap
   free    target not anchored: pre defers, post places, re-run is stable
-  blocked every side occupied: exit 1, board untouched
+  blocked every side occupied by free parts: placed, the parts it lands on
+          reported for pack_blocks; by fixed parts: exit 1, board untouched
   flipped target sent to the back by the real flip_sides.py: the part follows
           it onto B.Cu and is still connected
 """
@@ -127,7 +128,13 @@ def geometry_tests() -> None:
     check("a pose under the target's body is rejected", "body" in why, why)
     res, _ = d.evaluate(probe(180), "1", "U1", T, F, "left",
                         [ic, d.Obstacle("R9", (6, 9, 7, 11), [])], (0, 0, 50, 50), 0.1, 0.2, (0, 0))
-    check("a courtyard collision is counted", res and res[2] == ["R9"])
+    check("a collision with a fixed part is counted as fixed", res and res[2] == (["R9"], []))
+    # A free part in the way: counted, so fewer moves win, but its pads are
+    # not held to clearance -- pack_blocks moves it.
+    in_way = d.Obstacle("R8", (6, 9, 8, 11), [("SDA", F, (7.0, 9.6, 7.9, 10.4))], fixed=False)
+    res, why = d.evaluate(probe(180), "1", "U1", T, F, "left", [ic, in_way], (0, 0, 50, 50),
+                          0.1, 0.2, (0, 0))
+    check("a free part in the way is counted, not a rejection", res and res[2] == ([], ["R8"]), why)
     res, why = d.evaluate(probe(180), "1", "U1", T, F, "left", [ic], (8, 0, 50, 50), 0.1, 0.2, (0, 0))
     check("off board is rejected", res is None and "off board" in why)
     res, why = d.evaluate(probe(180), "1", "U1", T, frozenset("B"), "left", [ic], (0, 0, 50, 50),
@@ -274,12 +281,21 @@ def board_tests(tmp: Path) -> None:
     check("free: post places, re-run is stable",
           rc == 0 and len(js.get("placed", [])) == 1 and md5(board) == h1, err[-300:])
 
-    # blocked
+    # blocked by free parts: allowed, reported for pack_blocks to move
+    make_board(board, 0, blockers=[(20, 26), (20, 34), (16, 30), (24, 30)])
+    rc, js, err = run("direct_connect.py", board, netlist, free, "--stage", "post")
+    shoved = (js.get("placed") or [{}])[0].get("displaces")
+    check("blocked by free parts: placed anyway, naming what pack_blocks must move",
+          rc == 0 and bool(shoved) and set(shoved) <= {"X0", "X1", "X2", "X3"}, f"{shoved} {err[-300:]}")
+
+    # blocked by fixed parts: nothing downstream moves them, so it fails
+    fixed_toml = tmp / "fixed.toml"
+    fixed_toml.write_text('[floorplan]\nanchors = ["X0", "X1", "X2", "X3"]\n')
     make_board(board, 0, blockers=[(20, 26), (20, 34), (16, 30), (24, 30)])
     h1 = md5(board)
-    rc, _, err = run("direct_connect.py", board, netlist, free, "--stage", "post")
-    check("blocked: exit 1 naming the blockers, board untouched",
-          rc == 1 and "still overlaps" in err and md5(board) == h1, err[-300:])
+    rc, _, err = run("direct_connect.py", board, netlist, fixed_toml, "--stage", "post")
+    check("blocked by fixed parts: exit 1 naming them, board untouched",
+          rc == 1 and "fixed part(s)" in err and md5(board) == h1, err[-300:])
 
     # flipped
     make_board(board, 90)

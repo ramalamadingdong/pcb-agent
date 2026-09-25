@@ -57,10 +57,11 @@ pin or the next decap along the rail; a different pick is warned about and
 reported as ``schematic_target``), then by
 courtyard overlap with the target (body pointing away wins), then by
 distance from where the part already sits -- which is what makes a re-run
-choose the same answer. A best candidate that still collides with another
-part is a FAILURE, not a warning: the fix is almost always to put the target
-in ``[[floorplan.place]]`` so the part is held and the optimiser packs around
-it (see Stages).
+choose the same answer. Landing on a FREE part is allowed and costs a move:
+``pack_blocks.py`` runs next and tetris-packs every free part (a free target
+and its tagged parts as one rigid block) off it. Landing on a FIXED part --
+floorplanned, a mounting hole, a held tagged part -- is a FAILURE, not a
+warning: nothing downstream will move it.
 
 After the write the board is reloaded from disk and every pair is checked
 independently: same net on both pads, pad shapes colliding on a shared
@@ -347,6 +348,10 @@ class Obstacle:
     ref: str
     court: Rect
     pads: list[tuple[str, frozenset, Rect]]  # (net, sides, rect)
+    # A fixed part stays where it is. A free one is only where the optimiser
+    # left it: pack_blocks moves it out of the way afterwards, so landing on
+    # it costs a move, not a failure.
+    fixed: bool = True
 
 
 def evaluate(
@@ -362,7 +367,11 @@ def evaluate(
     clearance: float,
     current: tuple[float, float],
 ):
-    """(score, pos, collisions) for one candidate, or (None, reason)."""
+    """(score, pos, (fixed, free) collisions) for one candidate, or (None, reason).
+
+    Pad clearance is held against fixed parts and the target; a free part's
+    pads are not, because pack_blocks moves that part off this one.
+    """
     mine = [p for p in probe.pads if p[0] == tag_pad]
     if len(mine) != 1:
         return None, f"{len(mine)} pads numbered {tag_pad}"
@@ -382,17 +391,21 @@ def evaluate(
         if not is_tag and tgt and overlap_area(r, tgt.court) > 0:
             return None, "pad under the target's body"
         for o in obstacles:
+            if not o.fixed and o.ref != target_ref:
+                continue
             for onet, osides, orect in o.pads:
                 if not (sides & osides) or onet == net:
                     continue
                 if gap(r, orect) < clearance - 1e-6:
                     return None, f"pad {num} within {clearance} mm of {o.ref} ({onet})"
+    free: list[str] = []
     for o in obstacles:
         if o.ref != target_ref and overlap_area(court, o.court) > 0:
-            collisions.append(o.ref)
+            (collisions if o.fixed else free).append(o.ref)
     body = overlap_area(court, tgt.court) if tgt else 0.0
     dist = math.hypot(x - current[0], y - current[1])
-    return ((len(collisions), round(body, 4), round(dist, 4)), (x, y), collisions), ""
+    return ((len(collisions), len(free), round(body, 4), round(dist, 4)), (x, y),
+            (collisions, free)), ""
 
 
 # --------------------------------------------------------------------------
@@ -457,11 +470,15 @@ def main() -> int:
         box, _ = courtyard_rect(fp)
         return tuple(mm(v) for v in box)  # rect_of is (x0, y0, x1, y1) in nm
 
-    def obstacle(fp) -> Obstacle:
+    fixed_refs = anchors | set(_lib.mechanical_parts(cfg))
+
+    def obstacle(fp, fixed: bool | None = None) -> Obstacle:
+        ref = fp.GetReference()
         return Obstacle(
-            fp.GetReference(),
+            ref,
             court_of(fp),
             [(p.GetNetname(), sides_of(p), rect(p.GetBoundingBox())) for p in fp.Pads()],
+            ref in fixed_refs if fixed is None else fixed,
         )
 
     by_ref = {fp.GetReference(): fp for fp in b.GetFootprints()}
@@ -538,7 +555,7 @@ def main() -> int:
             why = "; ".join(f"{n}x {r}" for r, n in sorted(reasons.items(), key=lambda kv: -kv[1]))
             _lib.fail(f"{t.ref}.{t.pin}: no pose touches any of {[f'{r}.{p}' for r, p in cands]} "
                       f"without a clearance or outline problem ({why})")
-        _, (x, y), rot, tref, tnum, side, coll, flipped, tpin = best
+        _, (x, y), rot, tref, tnum, side, (coll, displaces), flipped, tpin = best
         if (tref, tpin) != pref:
             print(f"  WARNING {t.ref}.{t.pin}: the schematic draws it on {pref[0]}.{pref[1]} but "
                   f"that pin has no free pose; placed on {tref}.{tpin} (same net {t.net}). "
@@ -547,21 +564,22 @@ def main() -> int:
         if coll:
             _lib.fail(
                 f"{t.ref}.{t.pin}: the best pose against {tref}.{tnum} ({side}) still overlaps "
-                f"{coll}. Put {tref} in [[floorplan.place]] so {t.ref} is placed before the "
-                "optimiser and held, or move what is in the way."
+                f"fixed part(s) {coll}, which pack_blocks will not move. Move them in "
+                f"[[floorplan.place]], or name a different target in the {COLUMN} column."
             )
         if fp.IsFlipped() != flipped:
             fp.Flip(fp.GetPosition(), pcbnew.FLIP_DIRECTION_TOP_BOTTOM)
         fp.SetOrientationDegrees(rot)
         fp.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y)))
         fp.SetLocked(True)
-        obstacles.append(obstacle(fp))  # later tags must respect this one
+        obstacles.append(obstacle(fp, fixed=True))  # later tags must respect this one
         bx, by = x - frame[0], frame[1] - y
         placed.append({
             "ref": t.ref, "pin": t.pin, "target": f"{tref}.{tnum}", "side": side,
             "rotation": rot, "x": round(bx, 3), "y": round(by, 3),
             "layer": "B" if flipped else "F", "held": held,
             "schematic_target": f"{pref[0]}.{pad_number(cfg, *pref)}",
+            "displaces": displaces,  # free parts pack_blocks has to move off it
         })
         print(f"  {t.ref}.{t.pin} -> {tref}.{tnum} ({side}, rot {rot:g}, "
               f"board ({bx:.3f}, {by:.3f}){', held' if held else ''})", file=sys.stderr)
