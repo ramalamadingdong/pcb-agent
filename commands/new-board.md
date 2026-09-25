@@ -153,7 +153,8 @@ Rules:
   `REF.PIN` limits the search to that part or pin. Use it for decoupling
   caps on IC supply pins and TVS parts on connector pins. It can't be
   combined with `[[floorplan.place]]` for the same part, and a tagged part
-  can't be another tag's target.
+  can't be another tag's target. The schematic draws the part hanging off a
+  short wire from that same pin, so the review shows what the board does.
 - **The note column carries the reason**, not a restatement of the pin name.
   Cite the datasheet page where the choice came from a document.
 - Pin numbers come from the datasheet's land drawing, not its text. Where the

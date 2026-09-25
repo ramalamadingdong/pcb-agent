@@ -4,9 +4,20 @@
 netlist.csv is the single source of truth for the board: it lists every
 (net, refdes, pin) node. This pass turns it into a real KiCad schematic using
 label-based connectivity — every pin gets a global label carrying its net
-name, placed exactly on the pin's electrical connection point. No wires, so
-there is no routing logic to get wrong and no way for the schematic to
+name, placed exactly on the pin's electrical connection point. No routing,
+so there is no routing logic to get wrong and no way for the schematic to
 disagree with the netlist.
+
+The one exception is a Direct-tagged part (see direct_connect.py): the board
+puts its pad on its target's pad, so the schematic draws it the same way --
+a straight wire out of the target pin, the part hanging off it at a
+junction, the net's label at the wire's far end. Straight runs only, placed
+by a collision search, and the same round-trip below proves them.
+
+Layout is a packer, not a grid: each part plus its labels (and anything
+hung on it) is one block, and blocks are packed tallest first into
+`[schematic] pack_width_mm` (sch_layout.skyline_pack). Featured refs go
+first.
 
 The generated schematic is then verified by round-tripping: extract_netlist()
 re-reads the .kicad_sch and the result is diffed against netlist.csv. A
@@ -33,6 +44,7 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import math
 import os
 import random
 import re
@@ -45,7 +57,9 @@ from pathlib import Path
 # insert only covers the isolated-mode / -P invocations where it does not.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _lib import emit, fail, load_config, mechanical_parts, pass_parser  # noqa: E402
+from _lib import emit, fail, load_config, mechanical_parts, part_spec, pass_parser  # noqa: E402
+import direct_connect  # noqa: E402
+import sch_layout as sl  # noqa: E402
 
 from kicad_tools.schematic.models.schematic import Schematic  # noqa: E402
 from kicad_tools.schematic.registry import get_registry  # noqa: E402
@@ -58,7 +72,9 @@ DEFAULT_SYMBOL_DIRS = [
 ]
 
 # Schematic readability only — PCB placement is done later by the pipeline.
-COLS, DX, DY = 9, 52, 42
+# Blocks are packed into this width (A3 landscape less its frame); the paper
+# grows to fit whatever height that takes.
+PACK_WIDTH_MM = 370.0
 
 
 def log(msg: str) -> None:
@@ -131,27 +147,6 @@ def read_rows(path: Path) -> list[tuple[str, str, str]]:
     return rows
 
 
-def part_spec(cfg: dict, ref: str) -> dict:
-    """Merge [parts.<REF>] over the matching [[part_rules]] prefix rule.
-
-    An explicit per-refdes entry wins key by key, so a board can name one
-    0805 capacitor without restating the symbol for every other one.
-
-    MIRRORED in make_libs.py:part_spec — the two passes must agree about which
-    footprint a refdes uses or the board vendors one geometry and the schematic
-    references another. Keep them identical.
-    """
-    spec = dict((cfg.get("parts") or {}).get(ref) or {})
-    prefix = "".join(ch for ch in ref if ch.isalpha())
-    for rule in cfg.get("part_rules") or []:
-        if rule.get("prefix") == prefix:
-            for key, value in rule.items():
-                if key != "prefix":
-                    spec.setdefault(key, value)
-            break
-    return spec
-
-
 def load_bom(path: Path, sc: dict) -> dict[str, dict]:
     """ref -> {value, properties} from an optional assembly BOM.
 
@@ -210,6 +205,147 @@ def board_only_notes(cfg: dict) -> list[str]:
         kinds.setdefault(what, []).append(ref)
     return [f"Board only, not drawn here ({what}s, no net): {', '.join(refs)}"
             for what, refs in kinds.items()]
+
+
+# =============================================================================
+# layout
+# =============================================================================
+
+# Body graphics in a library symbol. Pins are measured separately, and pin
+# and property positions are `(at ...)` nodes, which this does not match.
+_GFX_XY = re.compile(r"\((?:xy|start|end|center|mid)\s+(-?[\d.]+)\s+(-?[\d.]+)\)")
+
+
+def _place_local(sym, lx: float, ly: float) -> tuple[float, float]:
+    """Library (Y up) point -> sheet point, the transform pin_position uses."""
+    rad = math.radians(sym.rotation)
+    rx = lx * math.cos(rad) - ly * math.sin(rad)
+    ry = lx * math.sin(rad) + ly * math.cos(rad)
+    return sym.x + rx, sym.y - ry
+
+
+def outward(sym, lib_pin: str) -> tuple[int, int]:
+    """Unit direction a pin points AWAY from its body, on the sheet.
+
+    A library pin's angle points from its connection end toward the body;
+    rotate that by the instance rotation, flip Y for the sheet, reverse it.
+    """
+    pin = sym.find_pin(lib_pin)
+    a = math.radians(pin.angle + sym.rotation)
+    return (-round(math.cos(a)), round(math.sin(a)))
+
+
+def face(sym, lib_pin: str, want: tuple[int, int]) -> bool:
+    """Rotate `sym` so `lib_pin` points `want`; False if no rotation does."""
+    for rot in (0, 90, 180, 270):
+        sym.rotation = rot
+        if outward(sym, lib_pin) == want:
+            return True
+    return False
+
+
+def symbol_box(sym) -> sl.Box:
+    """Everything a placed symbol draws: pins, body outline, ref and value."""
+    pts = [sym.pin_position(p.number or p.name) for p in sym.symbol_def.pins]
+    raw = sym.symbol_def.raw_sexp or ""
+    pts += [_place_local(sym, float(a), float(b)) for a, b in _GFX_XY.findall(raw)]
+    if not pts:
+        pts = [(sym.x, sym.y)]
+    box = sl.grow(sl.union((x, y, x, y) for x, y in pts), 1.27)
+    # generate writes Reference at y-5.08 and Value at y-2.54, centred on x.
+    return sl.union([box, sl.text_box(sym.x, sym.y - 5.08, sym.reference),
+                     sl.text_box(sym.x, sym.y - 2.54, sym.value or "")])
+
+
+def pin_labels(sym, pins: list[tuple[str, str]], along_pin: bool = False):
+    """Global-label ops and boxes for (net, lib_pin) on a placed symbol.
+
+    Labels point left or right, away from the body -- vertical labels on a
+    vertical passive would run through its reference text, which KiCad
+    places above the symbol whatever its rotation. `along_pin` points them
+    the way the pin does instead -- down, under a part hung below a wire --
+    except upward, which is exactly where that text is.
+    """
+    ops, boxes = [], []
+    for net, lib_pin in pins:
+        x, y = sym.pin_position(lib_pin)
+        d = outward(sym, lib_pin) if along_pin else (0, -1)
+        if d[0] == 0 and not (along_pin and d == (0, 1)):
+            d = (-1, 0) if x < sym.x else (1, 0)
+        ops.append(("label", net, x, y, sl.DIRS[d]))
+        boxes.append(sl.label_box(x, y, d, net))
+    return ops, boxes
+
+
+def hang(target_sym, t_pin: str, net: str, sats: list, occupied: list[sl.Box],
+         policy: str = "nearest"):
+    """Draw Direct satellites off a target pin: pin -> wire -> part(s) -> label.
+
+    `sats` is [(sym, tagged lib pin, [(net, lib_pin), ...] other pins)]. The
+    wire leaves the target pin in its outward direction; each satellite hangs
+    perpendicular off it, its tagged pin ON the wire (with a junction), and
+    the net's label sits at the wire's far end. The run length and the side
+    the parts hang on are searched ("tetris") until nothing drawn collides
+    with anything already in `occupied`. `policy` orders that search:
+    "nearest" takes the shortest run on either side; "down" and "up" exhaust
+    one side (down, or right, for "down") before trying the other. Returns
+    (ops, boxes) or None.
+    """
+    tx, ty = target_sym.pin_position(t_pin)
+    d = outward(target_sym, t_pin)
+    perps = [(-d[1], d[0]), (d[1], -d[0])]
+    perps.sort(key=lambda n: (n[1] < 0, n[0] < 0))  # hang down / right first
+    if policy == "up":
+        perps.reverse()
+    runs = range(2, 80)
+    tries = ([(k, n) for k in runs for n in perps] if policy == "nearest"
+             else [(k, n) for n in perps for k in runs])
+    for steps, n in tries:
+        want = (-n[0], -n[1])  # the tagged pin must point back at the wire
+        ops, boxes = [], []
+        cx, cy = sl.r2(tx + d[0] * steps * sl.GRID), sl.r2(ty + d[1] * steps * sl.GRID)
+        joints = []
+        ok = True
+        for sym, pin, others in sats:
+            if not face(sym, pin, want):
+                ok = False
+                break
+            sym.x = sym.y = 0.0
+            px, py = sym.pin_position(pin)
+            # Slide along the wire until clear of the parts before it.
+            while True:
+                sym.x, sym.y = sl.r2(cx - px), sl.r2(cy - py)
+                sb = symbol_box(sym)
+                lops, lboxes = pin_labels(sym, others, along_pin=True)
+                if not any(sl.hits(a, b) for a in (sb, *lboxes) for b in boxes):
+                    break
+                cx, cy = sl.r2(cx + d[0] * sl.GRID), sl.r2(cy + d[1] * sl.GRID)
+            ops += lops
+            boxes += [sb, *lboxes]
+            joints.append((cx, cy))
+            # Next part: past this one's extent along the wire.
+            along = (sb[2] - cx) if d[0] > 0 else (cx - sb[0]) if d[0] < 0 else \
+                    (sb[3] - cy) if d[1] > 0 else (cy - sb[1])
+            step = sl.snap_up(max(along, 0) + sl.GRID)
+            cx, cy = sl.r2(cx + d[0] * step), sl.r2(cy + d[1] * step)
+        if not ok:
+            continue
+        end = (cx, cy)
+        pts = [(tx, ty), *joints, end]
+        for a, b in zip(pts, pts[1:]):
+            ops.append(("wire", a, b))
+        for j in joints:
+            ops.append(("junction", *j))
+        ops.append(("label", net, *end, sl.DIRS[d]))
+        label = sl.label_box(*end, d, net)
+        # The wire starts on the target's own pin, inside its box: test
+        # it from one grid step out.
+        wire = sl.wire_box((tx + d[0] * sl.GRID, ty + d[1] * sl.GRID), end)
+        new = [*boxes, label, wire]
+        if any(sl.hits(a, b) for a in new for b in occupied):
+            continue
+        return ops, [*boxes, label, wire]
+    return None
 
 
 # =============================================================================
@@ -289,9 +425,14 @@ def main() -> int:
         # ---------------------------------------------------------------------
         # Placement
         #
-        # Featured parts (the big ICs) get their own row with wide margins;
-        # everything else goes on a coarse grid below.  This is schematic
-        # readability only — PCB placement is done later by the pipeline.
+        # Every part is a block: its symbol and the labels on its pins. A part
+        # tagged Direct in netlist.csv is not a block of its own -- it hangs
+        # off a short wire from the pin it touches on the board, inside its
+        # target's block (hang()). The blocks are then packed onto the sheet
+        # tallest first, skyline style (sch_layout.skyline_pack), featured
+        # parts ahead of everything. Readability only; PCB placement is done
+        # later by the pipeline. Connectivity is still one label per net at
+        # each block, and the round-trip below proves every node survived.
         # ---------------------------------------------------------------------
         featured = [r for r in (sc.get("featured_refs") or []) if r in refs]
         missing_featured = [r for r in (sc.get("featured_refs") or []) if r not in refs]
@@ -300,7 +441,7 @@ def main() -> int:
 
         placed: dict[str, object] = {}
 
-        def add(ref: str, x: float, y: float, full_value: bool) -> None:
+        def add(ref: str, full_value: bool) -> None:
             spec = part_spec(cfg, ref)
             if not spec.get("symbol"):
                 fail(
@@ -325,10 +466,12 @@ def main() -> int:
             props = dict(b.get("properties") or {})
             props.update(spec.get("properties") or {})
 
+            # Placed at the origin; the packer moves it. Position and
+            # rotation are read at write time, so moving is safe.
             placed[ref] = sch.add_symbol(
                 lib_id,
-                x=x,
-                y=y,
+                x=0,
+                y=0,
                 ref=ref,
                 value=value,
                 footprint=f"{lib_name}:{fp_name}",
@@ -336,34 +479,120 @@ def main() -> int:
                 dnp=bool(spec.get("dnp")),
             )
 
-        for i, ref in enumerate(featured):
-            add(ref, 90 + i * 160, 110, full_value=True)
-
-        rest = [r for r in refs if r not in featured]
-        y0 = 220 if featured else 110
-        for i, ref in enumerate(rest):
-            add(ref, 40 + (i % COLS) * DX, y0 + (i // COLS) * DY, full_value=False)
-
-        # ---------------------------------------------------------------------
-        # Connectivity: one global label per node, on the pin's connection point.
-        # ---------------------------------------------------------------------
-        label_count = 0
         for ref in refs:
+            add(ref, full_value=ref in featured)
+
+        def lib_pins(ref: str) -> list[tuple[str, str]]:
+            return [(net, pin_alias.get((ref, pin), pin)) for net, pin in by_ref[ref]
+                    if (ref, pin) not in skip_nodes]
+
+        # Direct satellites, grouped by (target ref, target lib pin).
+        anchors = direct_connect.anchor_set(cfg)
+        hangs: dict[tuple[str, str], list] = defaultdict(list)
+        for t in direct_connect.load_tags(Path(args.netlist), cfg):
+            tref, tpin = direct_connect.preferred(t, anchors)
+            if (t.ref, t.pin) in skip_nodes or (tref, tpin) in skip_nodes:
+                continue
+            hangs[(tref, pin_alias.get((tref, tpin), tpin))].append(
+                (t.ref, pin_alias.get((t.ref, t.pin), t.pin), t.net))
+        satellites = {s[0] for v in hangs.values() for s in v}
+
+        blocks: dict[str, tuple[list[str], list[tuple], sl.Box]] = {}
+        fallback: list[str] = []
+        for ref in refs:
+            if ref in satellites:
+                continue
             sym = placed[ref]
-            for net, pin in by_ref[ref]:
-                if (ref, pin) in skip_nodes:
-                    continue
-                lib_pin = pin_alias.get((ref, pin), pin)
-                try:
-                    x, y = sym.pin_position(lib_pin)
-                except Exception as exc:
-                    fail(f"{ref}: no pin {lib_pin!r} on {sym.symbol_def.lib_id} ({exc})")
-                # Point the label away from the symbol body so it does not overlap.
-                rotation = 180 if x < sym.x else 0
-                sch.add_global_label(
-                    net, x, y, shape="passive", rotation=rotation, validate_connection=False
-                )
-                label_count += 1
+            t_pins = {p for (r, p) in hangs if r == ref}
+            base_ops, base = pin_labels(sym, [(n, p) for n, p in lib_pins(ref) if p not in t_pins])
+            base = [symbol_box(sym), *base]
+
+            def pin_key(p: str, sym=sym):
+                x, y = sym.pin_position(p)
+                return (y if outward(sym, p)[0] else x, p)
+
+            def attempt(order: list[str], policy: str, sym=sym, ref=ref):
+                """Hang every target pin in `order`; (ops, boxes, members, missed)."""
+                ops, occupied, members, missed = list(base_ops), list(base), [ref], []
+                for t_pin in order:
+                    group = sorted(hangs[(ref, t_pin)])
+                    sats = [(placed[s], sp, [(n, p) for n, p in lib_pins(s) if p != sp])
+                            for s, sp, _ in group]
+                    got = hang(sym, t_pin, group[0][2], sats, occupied, policy)
+                    if got is None:
+                        missed.append(t_pin)
+                        lops, lboxes = pin_labels(sym, [(group[0][2], t_pin)])
+                        ops += lops
+                        occupied += lboxes
+                        continue
+                    ops += got[0]
+                    occupied += got[1]
+                    members += [s for s, _, _ in group]
+                return ops, occupied, members, missed
+
+            # A greedy run can box itself in: an early pin takes the cheap
+            # spot a later pin needed. So try a few arrangements -- pins taken
+            # bottom-up or top-down, each side-preference -- keep the first
+            # that hangs everything, else the one that hangs the most.
+            # Deterministic; re-run the winner last so the satellites' poses
+            # are its poses.
+            by_pos = sorted(t_pins, key=pin_key)
+            plans = [(o, pol) for o in (by_pos[::-1], by_pos) for pol in ("down", "up", "nearest")]
+            best = None
+            for order, pol in plans:
+                res = attempt(order, pol)
+                if best is None or len(res[3]) < len(best[1][3]):
+                    best = ((order, pol), res)
+                if not res[3]:
+                    break
+            ops, occupied, members, missed = attempt(*best[0]) if t_pins else (base_ops, base, [ref], [])
+            for t_pin in missed:
+                group = sorted(hangs[(ref, t_pin)])
+                # Readability, not connectivity: draw it the plain way.
+                log(f"  WARNING {ref}.{t_pin}: no collision-free spot to hang "
+                    f"{[s for s, _, _ in group]} -- drawn as separate blocks")
+                fallback += [s for s, _, _ in group]
+            blocks[ref] = (members, ops, sl.union(occupied))
+        for ref in fallback:
+            sym = placed[ref]
+            sym.rotation, sym.x, sym.y = 0, 0.0, 0.0
+            ops, boxes = pin_labels(sym, lib_pins(ref))
+            blocks[ref] = ([ref], ops, sl.union([symbol_box(sym), *boxes]))
+
+        def size(k: str) -> tuple[float, float]:
+            b = blocks[k][2]
+            return b[2] - b[0], b[3] - b[1]
+
+        order = featured + sorted((k for k in blocks if k not in featured),
+                                  key=lambda k: (-size(k)[1], -size(k)[0], k[0], len(k), k))
+        width = float(sc.get("pack_width_mm", PACK_WIDTH_MM))
+        offsets = sl.skyline_pack([(k, *size(k)) for k in order if k in blocks], width)
+
+        # Below the notes and the PWR_FLAG row.
+        n_notes = len(sc.get("notes") or [1]) + len(board_only_notes(cfg))
+        ox, oy = 25.4, sl.snap_up(max(76.2, 40 + 10 * n_notes))
+        label_count = 0
+        for k, (members, ops, box) in blocks.items():
+            px, py = offsets[k]
+            # Whole grid steps, so every pin stays on the connection grid.
+            dx, dy = sl.snap_up(ox + px - box[0]), sl.snap_up(oy + py - box[1])
+            for m in members:
+                placed[m].x, placed[m].y = sl.r2(placed[m].x + dx), sl.r2(placed[m].y + dy)
+            for op in ops:
+                if op[0] == "label":
+                    _, net, x, y, rot = op
+                    sch.add_global_label(net, sl.r2(x + dx), sl.r2(y + dy), shape="passive",
+                                         rotation=rot, validate_connection=False)
+                    label_count += 1
+                elif op[0] == "wire":
+                    (ax, ay), (bx, by) = op[1], op[2]
+                    sch.add_wire((sl.r2(ax + dx), sl.r2(ay + dy)), (sl.r2(bx + dx), sl.r2(by + dy)),
+                                 warn_on_collision=False)
+                else:
+                    sch.add_junction(sl.r2(op[1] + dx), sl.r2(op[2] + dy))
+        hung = sorted(satellites - set(fallback))
+        if hung:
+            log(f"  direct        : {', '.join(hung)} drawn on their target pins")
 
         # ---------------------------------------------------------------------
         # No-connect markers on every pin netlist.csv marks NC.

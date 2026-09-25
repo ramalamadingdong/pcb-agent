@@ -216,3 +216,36 @@ def mechanical_parts(cfg: dict) -> dict[str, str]:
     for i in range(1, len(fd.get("positions") or []) + 1):
         out[f"{fd.get('ref_prefix', 'FID')}{i}"] = "fiducial"
     return out
+
+
+def part_spec(cfg: dict, ref: str) -> dict:
+    """Merge [parts.<REF>] over the matching [[part_rules]] prefix rule.
+
+    An explicit per-refdes entry wins key by key, so a board can name one
+    0805 capacitor without restating the symbol for every other one.
+
+    The ONE copy: make_libs, generate_schematic and direct_connect all read
+    it here. make_libs and the schematic must agree about which footprint a
+    refdes uses, or the board vendors one geometry and the schematic
+    references another -- which is why this is no longer two mirrored
+    functions kept identical by a comment.
+    """
+    spec = dict((cfg.get("parts") or {}).get(ref) or {})
+    prefix = "".join(ch for ch in ref if ch.isalpha())
+    for rule in cfg.get("part_rules") or []:
+        if rule.get("prefix") == prefix:
+            for key, value in rule.items():
+                if key != "prefix":
+                    spec.setdefault(key, value)
+            break
+    return spec
+
+
+def pin_types(cfg: dict, ref: str) -> dict[str, str]:
+    """{pin number: electrical type} for a ref whose symbol board.toml
+    defines in [[libs.symbols]]; empty for a stock-library symbol."""
+    name = str(part_spec(cfg, ref).get("symbol", "")).split(":")[-1]
+    for sym in (cfg.get("libs") or {}).get("symbols") or []:
+        if sym.get("name") == name:
+            return {str(p.get("number")): str(p.get("type", "")) for p in sym.get("pins") or []}
+    return {}

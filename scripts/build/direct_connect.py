@@ -50,6 +50,11 @@ rejected if:
     no copper layer.
 
 Survivors are ranked by courtyard collisions with other parts, then by
+whether the target is the one the schematic draws (``preferred``: a named
+pin, else a ``power_in`` pin from ``[[libs.symbols]]``, else the part with
+the most netlist rows -- a decap goes on its IC's supply pin, not on a sense
+pin or the next decap along the rail; a different pick is warned about and
+reported as ``schematic_target``), then by
 courtyard overlap with the target (body pointing away wins), then by
 distance from where the part already sits -- which is what makes a re-run
 choose the same answer. A best candidate that still collides with another
@@ -185,12 +190,14 @@ def load_tags(netlist: Path, cfg: dict) -> list[Tag]:
     }
 
     raw: list[tuple[int, str, str, str, str]] = []
+    rows_per_ref: dict[str, int] = {}
     by_net: dict[str, list[tuple[str, str]]] = {}
     for lineno, row in rows:
         net, ref, pin = row.get("Net", ""), row.get("RefDes", ""), row.get("Pin", "")
         if not net or not ref or not pin:
             continue  # the build's own readers report malformed rows
         by_net.setdefault(net, []).append((ref, pin))
+        rows_per_ref[ref] = rows_per_ref.get(ref, 0) + 1
         spec = row.get(COLUMN, "")
         if spec:
             raw.append((lineno, net, ref, pin, spec))
@@ -233,6 +240,17 @@ def load_tags(netlist: Path, cfg: dict) -> list[Tag]:
         if not cands:
             what = f"{spec} on net {net}" if want_ref else f"other pin on net {net}"
             _lib.fail(f"{where}: {COLUMN}={spec!r} but netlist.csv has no {what} to touch")
+        # Preference order, which the schematic draws and the board tries
+        # first: a named pin; else a pin [[libs.symbols]] declares power_in
+        # (the buck's VIN, not the current monitor's sense pin on the same
+        # rail); then the part with the most rows in netlist.csv (the IC a
+        # decap serves, not the next decap along the rail); netlist order on
+        # a tie.
+        def rank(c: tuple[str, str]) -> tuple[int, int]:
+            kind = _lib.pin_types(cfg, c[0]).get(pad_number(cfg, *c), "")
+            return (0 if kind == "power_in" else 1, -rows_per_ref[c[0]])
+
+        cands.sort(key=rank)
         tags.append(Tag(ref, pin, net, spec, lineno, tuple(cands)))
     return tags
 
@@ -241,6 +259,25 @@ def is_held(tag: Tag, anchors: set[str]) -> bool:
     """A tag with an anchored candidate is placed before the optimiser runs
     and held there. MUST be the one rule both this pass and place.py use."""
     return any(r in anchors for r, _ in tag.candidates)
+
+
+def preferred(tag: Tag, anchors: set[str]) -> tuple[str, str]:
+    """The target generate_schematic draws the part against, and the one this
+    pass picks whenever it fits. MUST be the one rule both use: the schematic
+    a human reviews is the board that ships."""
+    held = is_held(tag, anchors)
+    return next(c for c in tag.candidates if not held or c[0] in anchors)
+
+
+def anchor_set(cfg: dict) -> set[str]:
+    """place.anchors_for without its failure: a board with no anchors yet
+    fails in place.py, where the message about anchors belongs."""
+    from place import anchors_for  # lazy: place imports this module
+
+    try:
+        return set(anchors_for(cfg))
+    except SystemExit:
+        return set()
 
 
 def held_refs(netlist: Path, cfg: dict, anchors: list[str] | set[str]) -> list[str]:
@@ -444,6 +481,7 @@ def main() -> int:
         tag_pad = pad_number(cfg, t.ref, t.pin)
         held = is_held(t, anchors)
         cands = [c for c in t.candidates if not held or c[0] in anchors]
+        pref = preferred(t, anchors)
 
         best = None
         reasons: dict[str, int] = {}
@@ -490,15 +528,22 @@ def main() -> int:
                             reasons[why] = reasons.get(why, 0) + 1
                             continue
                         score, (x, y), coll = res
-                        key = (score, 0 if rot == start_rot else 1, SIDES.index(side), rot)
+                        # Collisions first, then the schematic's target, then fit.
+                        key = (score[0], 0 if (tref, tpin) == pref else 1, score[1:],
+                               0 if rot == start_rot else 1, SIDES.index(side), rot)
                         if best is None or key < best[0]:
-                            best = (key, (x, y), rot, tref, tnum, side, coll, fp.IsFlipped())
+                            best = (key, (x, y), rot, tref, tnum, side, coll, fp.IsFlipped(), tpin)
 
         if best is None:
             why = "; ".join(f"{n}x {r}" for r, n in sorted(reasons.items(), key=lambda kv: -kv[1]))
             _lib.fail(f"{t.ref}.{t.pin}: no pose touches any of {[f'{r}.{p}' for r, p in cands]} "
                       f"without a clearance or outline problem ({why})")
-        _, (x, y), rot, tref, tnum, side, coll, flipped = best
+        _, (x, y), rot, tref, tnum, side, coll, flipped, tpin = best
+        if (tref, tpin) != pref:
+            print(f"  WARNING {t.ref}.{t.pin}: the schematic draws it on {pref[0]}.{pref[1]} but "
+                  f"that pin has no free pose; placed on {tref}.{tpin} (same net {t.net}). "
+                  f"Name the target in the {COLUMN} column to make the choice yours.",
+                  file=sys.stderr)
         if coll:
             _lib.fail(
                 f"{t.ref}.{t.pin}: the best pose against {tref}.{tnum} ({side}) still overlaps "
@@ -516,6 +561,7 @@ def main() -> int:
             "ref": t.ref, "pin": t.pin, "target": f"{tref}.{tnum}", "side": side,
             "rotation": rot, "x": round(bx, 3), "y": round(by, 3),
             "layer": "B" if flipped else "F", "held": held,
+            "schematic_target": f"{pref[0]}.{pad_number(cfg, *pref)}",
         })
         print(f"  {t.ref}.{t.pin} -> {tref}.{tnum} ({side}, rot {rot:g}, "
               f"board ({bx:.3f}, {by:.3f}){', held' if held else ''})", file=sys.stderr)

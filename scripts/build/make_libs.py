@@ -64,7 +64,7 @@ from pathlib import Path
 # insert only covers the isolated-mode / -P invocations where it does not.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _lib import emit, fail, load_config, pass_parser  # noqa: E402
+from _lib import emit, fail, load_config, part_spec, pass_parser  # noqa: E402
 
 from kicad_tools.schematic.symbol_generator import (  # noqa: E402
     PinDef,
@@ -126,27 +126,6 @@ def netlist_refs(rows: list[tuple[str, str, str]]) -> list[str]:
     for ref in sorted(nc_only):
         log(f"  note: {ref} appears only on NC rows — not placed, not vendored")
     return sorted(live, key=lambda r: (r[0], len(r), r))
-
-
-def part_spec(cfg: dict, ref: str) -> dict:
-    """Merge [parts.<REF>] over the matching [[part_rules]] prefix rule.
-
-    An explicit per-refdes entry wins key by key, so a board can name one
-    0805 capacitor without restating the symbol for every other one.
-
-    MIRRORED in generate_schematic.py:part_spec — the two passes must agree
-    about which footprint a refdes uses or the board vendors one geometry and
-    the schematic references another. Keep them identical.
-    """
-    spec = dict((cfg.get("parts") or {}).get(ref) or {})
-    prefix = "".join(ch for ch in ref if ch.isalpha())
-    for rule in cfg.get("part_rules") or []:
-        if rule.get("prefix") == prefix:
-            for key, value in rule.items():
-                if key != "prefix":
-                    spec.setdefault(key, value)
-            break
-    return spec
 
 
 def split_fp_ref(value: str) -> tuple[str | None, str]:
