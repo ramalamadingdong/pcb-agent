@@ -102,7 +102,7 @@ def main() -> int:
     else:
         import drc_sample
         _report, drc_ok = drc_sample.sample(board, cfg, int((cfg.get("drc") or {}).get(
-            "runs", drc_sample.DEFAULT_RUNS)), fill="copy")
+            "runs", drc_sample.DEFAULT_RUNS)), fill="copy", netlist=args.netlist)
         router_left = None
         unfinished = _lib.unrouted_nets(board)["pad_links_missing"]
         notes.append("no --route-report: router_left unknown, DRC sampled here")

@@ -326,7 +326,8 @@ def main() -> int:
     # ---- 7. DRC, sampled and gated ------------------------------------------
     log("=== 7/7  DRC x%d =============================================="
         % max(1, drc_runs))
-    drc, drc_ok = drc_sample.sample(board, cfg, drc_runs, fill="none")
+    drc, drc_ok = drc_sample.sample(board, cfg, drc_runs, fill="none",
+                                    netlist=args.netlist)
 
     if not args.keep_intermediates:
         dsn.unlink(missing_ok=True)

@@ -44,6 +44,12 @@ board.toml
                              # more of the old one
     reason = "..."           # required. The written reason IS the point
 
+``Direct``-tagged parts (direct_connect.py) sit pad-on-pad against a pin on
+their net by design, and DRC reports each pair as ``courtyards_overlap``. A
+``courtyards_overlap`` between a tagged part and one of ITS OWN candidate
+targets from netlist.csv is accepted without a ledger entry and printed as
+``accepted (Direct)``. An overlap with any other part is still a finding.
+
 Refs are read from the item descriptions KiCad writes (``Footprint C8``,
 ``Pad 2 [GND] of J4 on F.Cu``, ``PTH pad 10 [SCL_3V3] of J13``). Nets are
 read from the bracketed names in the same text.
@@ -57,8 +63,8 @@ rewriting anyway. As a checker (``make check``) this pass writes nothing:
 it fills and checks a COPY in a temp directory, together with the
 .kicad_pro that holds the rules and the .kicad_sch that parity reads.
 
-Environment: KICAD_CLI (default ``kicad-cli``). --netlist is accepted for
-contract uniformity and unused.
+Environment: KICAD_CLI (default ``kicad-cli``). --netlist is read for its
+``Direct`` column.
 """
 
 from __future__ import annotations
@@ -151,6 +157,15 @@ def load_accepts(cfg: dict, table: str) -> list[dict]:
     return out
 
 
+def direct_pairs(netlist: str | Path | None, cfg: dict) -> set[frozenset]:
+    """{tagged ref, candidate target ref} for every Direct-tagged netlist row."""
+    if not netlist or not Path(netlist).exists():
+        return set()
+    from direct_connect import load_tags
+    return {frozenset((t.ref, r)) for t in load_tags(Path(netlist), cfg)
+            for r, _p in t.candidates}
+
+
 def apply_accepts(run: list[dict], accepts: list[dict]) -> tuple[list, list, list[int]]:
     """Split one run into (accepted, unaccepted) and count matches per entry."""
     used = [0] * len(accepts)
@@ -214,7 +229,8 @@ def stage_copy(board: Path, tmp: Path) -> Path:
     return tmp / board.name
 
 
-def sample(board: Path, cfg: dict, runs: int, *, fill: str) -> tuple[dict, bool]:
+def sample(board: Path, cfg: dict, runs: int, *, fill: str,
+           netlist: str | Path | None = None) -> tuple[dict, bool]:
     """Run DRC `runs` times and judge it against the ledger.
 
     fill: "inplace" fills `board` itself first, "copy" fills and checks a temp
@@ -222,6 +238,7 @@ def sample(board: Path, cfg: dict, runs: int, *, fill: str) -> tuple[dict, bool]
     """
     cli = kicad_cli()
     accepts = load_accepts(cfg, "drc")
+    direct = direct_pairs(netlist, cfg)
     gate_warnings = bool((cfg.get("drc") or {}).get("gate_warnings", False))
     parity = board.with_suffix(".kicad_sch").exists()
     if not parity:
@@ -248,8 +265,15 @@ def sample(board: Path, cfg: dict, runs: int, *, fill: str) -> tuple[dict, bool]
     # ---- judge every run; anything unaccepted in ANY run is a finding --------
     unaccepted: dict[tuple, dict] = {}
     matched_max = [0] * len(accepts)
+    direct_seen: set[frozenset] = set()
     for r in results:
-        _acc, bad, used = apply_accepts(r["found"], accepts)
+        rest = []
+        for v in r["found"]:
+            if v["kind"] == "courtyards_overlap" and v["refs"] in direct:
+                direct_seen.add(v["refs"])
+            else:
+                rest.append(v)
+        _acc, bad, used = apply_accepts(rest, accepts)
         matched_max = [max(a, b) for a, b in zip(matched_max, used)]
         per_run = Counter(identity(v) for v in bad)
         for v in bad:
@@ -283,6 +307,9 @@ def sample(board: Path, cfg: dict, runs: int, *, fill: str) -> tuple[dict, bool]
     for a, n in zip(accepts, matched_max):
         if n:
             log(f"  accepted: {a['kind']} {sorted(a['refs']) or ''} x{n} -- {a['reason']}")
+    for pair in sorted(direct_seen, key=sorted):
+        log(f"  accepted (Direct): courtyards_overlap {'/'.join(sorted(pair))} -- "
+            f"pad-on-pad by netlist.csv's Direct column")
     for v in sorted(failing, key=lambda v: (v["kind"], v["items"])):
         log(f"  FAIL  {v['severity']} {v['kind']} ({v['runs_seen']}/{len(results)} runs): "
             + " ;; ".join(v["items"]))
@@ -331,6 +358,7 @@ def sample(board: Path, cfg: dict, runs: int, *, fill: str) -> tuple[dict, bool]
         "accepted": [{"kind": a["kind"], "refs": sorted(a["refs"]), "matched": n,
                       "reason": a["reason"]} for a, n in zip(accepts, matched_max) if n],
         "stale_accepts": [{"kind": a["kind"], "refs": sorted(a["refs"])} for a in stale],
+        "accepted_direct": [sorted(p) for p in sorted(direct_seen, key=sorted)],
     }
     return report, ok
 
@@ -350,7 +378,7 @@ def main() -> int:
     runs = args.runs or int((cfg.get("drc") or {}).get("runs", DEFAULT_RUNS))
 
     log(f"=== DRC x{runs} on {board} (fill: {args.fill})")
-    report, ok = sample(board, cfg, runs, fill=args.fill)
+    report, ok = sample(board, cfg, runs, fill=args.fill, netlist=args.netlist)
     _lib.emit(PASS, board=str(board), **report)
     return 0 if ok else 1
 
