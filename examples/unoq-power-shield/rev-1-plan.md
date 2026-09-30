@@ -313,11 +313,13 @@ board was then rebuilt from `netlist.csv` in the pinned container (KiCad
 the rebuilt board, the PNGs with native KiCad because the container has no
 3D models.
 
-The placement optimiser ran all four rounds and each ended with
-"infeasible placement", because the floorplan locks every part and the
-ledgered courtyard grazes count as overlap. So the board is exactly the hand
-floorplan. That is intended here, but it means `place.py` is not exercised
-on this example.
+The floorplan anchors all 49 parts, so nothing is free to move and the
+board is exactly the hand floorplan. The optimiser used to run anyway and
+end every round with "infeasible placement", because the ledgered courtyard
+grazes count as overlap. `place.py` now sees 0 free parts, skips it, and
+runs only the pad repair and the conflict score (13 conflicts, the ledgered
+grazes). A scratch rebuild with that change passes every gate. The
+consequence stands: this example does not exercise the optimiser.
 
 Still to do at order time (the gate list above): re-verify every part in
 stock, and commit the exact package you upload. `fab/` is gitignored, so

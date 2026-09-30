@@ -66,6 +66,9 @@ from the board as it stands, it removes any stale best-snapshot from a
 previous run before it begins, and it always leaves the best-scoring board of
 this run in place.
 
+A board with NO free parts (every ref in the floorplan, the holes or the
+anchors, as in the example) skips the optimiser: see floorplan_only().
+
 A `kct` call that fails is a failed ROUND, not a failed build (the optimiser
 genuinely times out on a full board): it is reported on stderr and the round
 still gets repaired, tucked and scored.  A sibling pass that fails IS a failed
@@ -147,6 +150,24 @@ def anchors_for(cfg: dict) -> list[str]:
     return out
 
 
+REF_RE = re.compile(r'\((?:property\s+"Reference"|fp_text\s+reference)\s+"([^"]+)"')
+
+
+def board_refs(board: Path) -> set[str]:
+    """Every footprint reference on the board, read as text.
+
+    This pass runs under the kicad-tools interpreter, which need not have
+    pcbnew. Both spellings are read: `(property "Reference" ...)` (KiCad 8+)
+    and `(fp_text reference ...)` (older). Zero refs means the format moved
+    under us, and that is a failure, not "nothing to place".
+    """
+    refs = set(REF_RE.findall(board.read_text(encoding="utf-8", errors="replace")))
+    if not refs:
+        _lib.fail(f"{board}: found no footprint references -- cannot tell which "
+                  "parts are free to place")
+    return refs
+
+
 def run_kct(args: list[str], *, label: str) -> bool:
     """Run a kct subcommand. Returns False (and reports) on a non-zero exit."""
     cmd = kct_argv() + args
@@ -198,6 +219,53 @@ def run_pass(script: str, board: Path, args, *, python: str) -> dict:
     _lib.fail(f"{script} exited 0 but printed no JSON line — cannot verify what it changed")
 
 
+def floorplan_only(board: Path, args, anchors: list[str], kct_python: str,
+                   kicad_python: str) -> int:
+    """Every part is anchored: the floorplan IS the placement.
+
+    Nothing is free to move, so the optimiser has no work. It is not
+    harmless to run it anyway: handed a locked layout that carries accepted
+    courtyard grazes (the example's power stage and UNO fixtures), `kct
+    optimize-placement` exits "infeasible placement" rather than emit what it
+    calls illegal geometry. That printed four FATALs per build and changed
+    nothing. So it is skipped, and says so.
+
+    The repairs still run once: pads arrive needing repair from the
+    kicad-tools writes before this pass, with no optimiser involved (16 of
+    53 footprints on the example, measured 2026-09-30; the failed optimiser
+    rounds this replaces had pushed that to 49). The conflict count is still
+    reported, so a floorplan that collides says so here.
+    """
+    print(f"  0 free parts: all {len(anchors)} placed refs are anchored "
+          f"(floorplan, holes, anchors) -- the floorplan is the placement; "
+          f"optimiser skipped", file=sys.stderr)
+    rp = run_pass("repair_pads.py", board, args, python=kct_python)
+    _lib.assert_net_table(board)
+    ti = run_pass("tuck_in.py", board, args, python=kct_python)
+    _lib.assert_net_table(board)
+    n = conflict_count(board)
+    print(f"  floorplan: {n if n is not None else 'unscored'} conflicts",
+          file=sys.stderr)
+    fpa = run_pass("fix_pad_angles.py", board, args, python=kicad_python)
+    nets = _lib.assert_net_table(board)
+    _lib.emit(
+        NAME,
+        board=str(board),
+        rounds=0,
+        skipped="all parts anchored",
+        anchors=len(anchors),
+        start_conflicts=n,
+        best_conflicts=n,
+        best_round=0,
+        per_round=[],
+        pads_repaired=rp.get("repaired"),
+        tucked=ti.get("moved"),
+        pad_angles_fixed=fpa.get("pads_fixed"),
+        nets=nets,
+    )
+    return 0
+
+
 def main() -> int:
     ap = _lib.pass_parser(NAME)
     ap.add_argument("--rounds", type=int, default=4, help="placement rounds (default 4)")
@@ -220,6 +288,10 @@ def main() -> int:
     snapshot = board.with_name(f"{board.stem}.best{board.suffix}")
     if snapshot.exists():  # stale snapshot from an interrupted run
         snapshot.unlink()
+
+    free = sorted(board_refs(board) - set(anchors))
+    if not free:
+        return floorplan_only(board, args, anchors, kct_python, kicad_python)
 
     start = conflict_count(board)
     if start is None:
