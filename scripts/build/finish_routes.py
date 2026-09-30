@@ -541,8 +541,10 @@ def main() -> int:
         for x, y, r, net in vias:
             if net == nc:
                 items.append([x, y, "via", set(all_cu), r])
+        seg_ends = []
         for x0, y0, x1, y1, hw, net, lay in segs:
             if net == nc:
+                seg_ends.append(len(items))
                 items.append([x0, y0, "seg", {lay}, hw])
                 items.append([x1, y1, "seg", {lay}, hw])
         n = len(items)
@@ -553,6 +555,19 @@ def main() -> int:
                 par[i] = par[par[i]]
                 i = par[i]
             return i
+
+        # A segment's two ends are one piece of copper. Without this union
+        # a single track from pad A to pad B clusters as {A, near end} and
+        # {B, far end}: every routed net with a segment longer than its own
+        # width looked broken. Measured on the example (2026-09-30): pcbnew
+        # counted 0 missing links before this pass, and it still found 26
+        # nets "needing completion", laid 98 redundant links (292 segments,
+        # 92 of them exact duplicates that cleanup_pass then deleted), and
+        # reported 14 nets as NO PATH FOUND.
+        for i in seg_ends:
+            ri, rj = find(i), find(i + 1)
+            if ri != rj:
+                par[ri] = rj
 
         for i in range(n):
             for j in range(i + 1, n):

@@ -79,9 +79,10 @@ Don't remove these, and don't reorder them.
   past the next pad's via. DRC uses the larger of the two nets' clearances, so
   a fine-pitch escape past ground copper is held to the ground net's rule.
 - **`fix_pad_angles` runs twice**: once at the end of the placement loop,
-  and again just before silk. A pass after the placement loop strips pad
-  angles a second time (16 pads on the example, 2026-09-30).
-  `make check` runs it with `--check`, so the fault can't reach the fab.
+  and again just before silk. The committed example came out of an earlier
+  build with 16 stripped pad angles, and the stripping pass has not been
+  identified. `make check` runs it with `--check`, so the fault can't reach
+  the fab.
 - **`silk_finish` repositions every refdes.** The coordinate corruption that
   hits pads also hits reference and value fields, and a pad-only repair
   doesn't touch them. The fab clips anything off board, so without this the

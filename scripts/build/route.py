@@ -290,6 +290,13 @@ def main() -> int:
         "post_route_fix.py", "--board", str(board), "--config", args.config,
         "--netlist", args.netlist)
 
+    # What the completion pass is about to be asked to complete, counted by
+    # pcbnew, so its own "nets needing completion" can be checked against it.
+    unrouted_pre_completion = unrouted_nets(board)
+    log(f"unrouted before finish_routes (pcbnew): "
+        f"{unrouted_pre_completion['pad_links_missing']} pad link(s) in "
+        f"{list(unrouted_pre_completion['nets'])}")
+
     log("=== 5/7  finish_routes =======================================")
     # Exit 1 means "nets remain unfinished", which is a reported result on a
     # board that spends layers on planes — not a reason to abandon the route.
@@ -298,6 +305,12 @@ def main() -> int:
                        "--config", args.config, "--netlist", args.netlist,
                        allow=(0, 1))
     stages["finish_routes"] = fin
+    claimed = fin.get("nets_needing_completion")
+    if claimed and not unrouted_pre_completion["nets"]:
+        # its connectivity model is its own; pcbnew is the authority. This
+        # is the signature of the clusters_for bug fixed 2026-09-30.
+        log(f"WARNING finish_routes worked on {claimed} net(s) pcbnew counts as "
+            f"already connected: its links are redundant copper")
     if rc == 1:
         log(f"finish_routes: {len(fin.get('unfixed', []))} net(s) unfinished: "
             f"{fin.get('unfixed')}")
@@ -329,6 +342,7 @@ def main() -> int:
         segments_after_router=seg_routed,
         segments_final=count_segments(board),
         unrouted_after_router=unrouted,
+        unrouted_before_completion=unrouted_pre_completion,
         unfixed=stages.get("finish_routes", {}).get("unfixed", []),
         drc=drc,
         stages=stages,

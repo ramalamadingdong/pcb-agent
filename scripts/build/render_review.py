@@ -206,6 +206,11 @@ def main() -> int:
 
     finished: set[str] = set()
     router_left = 0
+    if args.route_report and not Path(args.route_report).exists():
+        # the Makefile always passes it; before a route there is none
+        print(f"  no route report at {args.route_report}: routing "
+              "metrics unavailable", file=sys.stderr)
+        args.route_report = None
     if args.route_report:
         rep = json.loads(Path(args.route_report).read_text(encoding="utf-8"))
         router_left = (rep.get("unrouted_after_router") or {}).get("pad_links_missing", 0)
@@ -282,7 +287,10 @@ def main() -> int:
         for net, a, c in links:
             canvas.line(a[2], a[3], c[2], c[3], 0.12, RAT)
             canvas.text((a[2] + c[2]) / 2, (a[3] + c[3]) / 2 - 0.6, net, 0.7, RAT)
-        canvas.text(box[0] + (box[2] - box[0]) / 2, box[1] - 4.0, title, 1.4, TEXT)
+        head, _, rest = title.partition(" -- red:")
+        mid = box[0] + (box[2] - box[0]) / 2
+        canvas.text(mid, box[1] - 4.4, head, 1.4, TEXT)
+        canvas.text(mid, box[1] - 2.2, ("red:" + rest) if rest else "", 0.9, TEXT)
 
     legend = (f"red: {now['pad_links_missing']} link(s) unrouted in {len(now['nets'])} net(s)"
               + (f" | orange: {len(finished)} net(s) the router left, completion finished"

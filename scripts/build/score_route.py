@@ -12,7 +12,8 @@ baseline's, compared lexicographically, lower is better:
     2. DRC gate          0 if drc_sample passed (from the route report), else 1
     3. router left       pad links still missing after Freerouting, before
                          the completion passes: the router's own difficulty
-    4. unfinished        nets finish_routes could not complete either
+    4. unfinished        pad links still missing on the FINAL board, counted
+                         by pcbnew (not finish_routes' own `unfixed` list)
     5. vias
     6. track length (mm, 0.1 mm resolution)
 
@@ -84,11 +85,18 @@ def main() -> int:
 
     place_ok, place_fails = placement(board, args.config, args.netlist)
     notes = []
+    if args.route_report and not Path(args.route_report).exists():
+        # the Makefile always passes it; before a route there is none
+        print(f"  no route report at {args.route_report}: routing "
+              "metrics unavailable", file=sys.stderr)
+        args.route_report = None
     if args.route_report:
         rep = json.loads(Path(args.route_report).read_text(encoding="utf-8"))
         drc_ok = bool((rep.get("drc") or {}).get("ok"))
         router_left = (rep.get("unrouted_after_router") or {}).get("pad_links_missing")
-        unfinished = len(rep.get("unfixed") or [])
+        # measured on the final board, not finish_routes' own `unfixed`: that
+        # list once named 14 "unfinished" nets on a fully connected board
+        unfinished = _lib.unrouted_nets(board)["pad_links_missing"]
         if router_left is None:
             notes.append("route report predates unrouted_after_router")
     else:
@@ -96,7 +104,7 @@ def main() -> int:
         _report, drc_ok = drc_sample.sample(board, cfg, int((cfg.get("drc") or {}).get(
             "runs", drc_sample.DEFAULT_RUNS)), fill="copy")
         router_left = None
-        unfinished = len(_lib.unrouted_nets(board)["nets"])
+        unfinished = _lib.unrouted_nets(board)["pad_links_missing"]
         notes.append("no --route-report: router_left unknown, DRC sampled here")
 
     stats = _lib.track_stats(b)

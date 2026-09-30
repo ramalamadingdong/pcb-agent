@@ -49,12 +49,20 @@ defects that the earlier gates passed:
   its socket opens into the board. Found by `check_placement`, which now
   derives which way a connector faces from its rotation.
 - **16 pads on eight rotated passives lie along the part axis** (R3–R7,
-  C1, C6, C7). Found by `fix_pad_angles --check`. A pass after the
-  placement loop strips the pad angles again, so `make build` now runs
-  `fix_pad_angles` a second time.
+  C1, C6, C7). Found by `fix_pad_angles --check`. A rebuild in the pinned
+  container comes out correct. `make build` now runs `fix_pad_angles` a
+  second time as insurance, and `make check` gates on it.
+- **`finish_routes` laid redundant copper on already-routed nets.** Its
+  connectivity model never joined a segment's two ends. So it "completed"
+  26 nets that pcbnew counted as connected, reported 14 of them as NO PATH,
+  and left roughly 200 extra segments and 69 extra vias. It is fixed now. A
+  container rebuild of the example goes from 492 to 294 segments, 123 to 54
+  vias, and 1536 to 913 mm of track, with DRC unchanged (the same 17
+  accepted errors, 0 unconnected).
 
-Both need a rebuild, a re-route and a new sign-off, recorded in the
-example's `rev-1-plan.md`. The board files here are the pre-fix build.
+J4 needs a floorplan change, and all three need a rebuild, a re-route and a
+new sign-off, recorded in the example's `rev-1-plan.md`. The board files
+here are the pre-fix build.
 
 If you want only the fab-output checker, it stands alone with no dependencies
 at [gerber-check](https://github.com/ramalamadingdong/gerber-check).

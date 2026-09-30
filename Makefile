@@ -49,15 +49,17 @@ doctor:
 	@$(RUN)python3 scripts/doctor.py
 
 # netlist.csv -> schematic -> board -> placement -> zones -> marks -> silk,
-# ending in the pre-route snapshot. Order is load-bearing: mounting holes
+# ending in the pre-route snapshot. Every step, the snapshot copy included,
+# goes through $(RUN): with BOARD_DIR=/board the paths exist only inside the
+# container. Order is load-bearing: mounting holes
 # before the placement loop (their courtyards are obstacles), fiducials
 # before the pour refill (the pour must honour their clearance ring),
 # keepouts before silk (silk avoids the declared rectangles). direct_connect
 # runs twice: `pre` snaps Direct-tagged parts onto anchored targets so
 # place.py can hold them, `post` snaps the rest once the optimiser and
 # flip_sides have put their targets where they stay. fix_pad_angles
-# runs a second time before silk: a pass after the placement loop strips
-# pad angles again (16 pads on the committed example; see that pass).
+# runs a second time before silk as insurance: the committed example has 16
+# stripped pad angles from an earlier build (see that pass).
 build:
 	$(RUN)$(P)/make_libs.py --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/generate_schematic.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG)
@@ -77,7 +79,7 @@ build:
 	$(RUN)$(P)/fix_pad_angles.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/silk_finish.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --fill-only
-	cp $(PCB) $(SNAPSHOT)
+	$(RUN)cp $(PCB) $(SNAPSHOT)
 	@echo "snapshot: $(SNAPSHOT)"
 
 # Snapshot -> Freerouting (xvfb, -mt 1, foreground) -> completion stack ->
@@ -122,12 +124,12 @@ erc:
 # the ratsnest in red and what the completion passes finished in orange, plus
 # KiCad's own plots in review/kicad/. Writes nothing to the board.
 render:
-	@$(RUN)$(P)/render_review.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --out $(BOARD_DIR)/review $(if $(wildcard $(REPORT)),--route-report $(REPORT))
+	@$(RUN)$(P)/render_review.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --out $(BOARD_DIR)/review --route-report $(REPORT)
 
 # One comparable number for a routed board (see score_route.py). Pass
 # BASELINE=path/to/score.json to compare.
 score:
-	@$(RUN)$(P)/score_route.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --out $(BOARD_DIR)/build/score.json $(if $(wildcard $(REPORT)),--route-report $(REPORT)) $(if $(BASELINE),--baseline $(BASELINE))
+	@$(RUN)$(P)/score_route.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --out $(BOARD_DIR)/build/score.json --route-report $(REPORT) $(if $(BASELINE),--baseline $(BASELINE))
 
 clean:
-	rm -rf $(BOARD_DIR)/fab $(BOARD_DIR)/build $(BOARD_DIR)/review
+	$(RUN)rm -rf $(BOARD_DIR)/fab $(BOARD_DIR)/build $(BOARD_DIR)/review

@@ -254,15 +254,35 @@ defects were in the package the earlier gates passed.
 Fix, in the pipeline and not in the board file:
 - **J4:** `[[floorplan.place]]` J4 rotation 180 → 0. Re-tune its y, because at
   0° the body overhangs the outline by 0.07 mm.
-- **Pads:** `make build` now runs `fix_pad_angles` a second time, before
-  silk. The pass that strips the angles after the placement loop is
-  unproven. fanout's kicad-tools save is the suspect.
+- **Pads:** a rebuild in the pinned container (2026-09-30) comes out
+  correct, and the stripping pass was not reproduced. `make build` runs
+  `fix_pad_angles` a second time as insurance, and `make check` gates on it.
 
 Then rebuild, re-route, re-export and re-check. Drop the
 `copper_edge_clearance` J4 entry from `[[drc.accept]]`: with J4 turned
 around, its reinforcement tabs sit at the edge, not its signal pads. If DRC
 still flags the tabs, that needs its own explanation. Until then this board
 is not signed off.
+
+**A third finding came from the first end-to-end container run:
+`finish_routes` laid redundant copper.** Its `clusters_for` never joined a
+segment's two ends, so every routed net with a segment longer than its width
+looked broken. pcbnew counted **0** missing links before the pass. The pass
+still worked 26 nets, laid 98 links, and reported 14 nets as NO PATH FOUND.
+`cleanup_pass` then deleted 92 exact duplicates. The committed board carries
+the rest. The bug is fixed, and on a rebuild of this board:
+
+| | before the fix | after |
+| --- | --- | --- |
+| segments (final) | 492 | 294 |
+| vias | 123 | 54 |
+| track length | 1536 mm | 913 mm |
+| DRC ×5 | 17 errors (all ledgered), 0 unconnected | identical |
+| `finish_routes` unfixed | 14 nets | none |
+
+`route.py` now records pcbnew's count just before the pass
+(`unrouted_before_completion`), and warns if the pass works nets that pcbnew
+calls connected.
 
 The residual-DRC ledger above now lives in `board.toml` as `[[drc.accept]]`,
 with the exact refs, and is enforced by `drc_sample.py`. The 13 DRC warnings

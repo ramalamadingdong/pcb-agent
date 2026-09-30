@@ -16,12 +16,13 @@ pads on FOOTPRINT-LOCAL position (pad numbers repeat: shield pegs share a
 number, unnumbered mechanical pads share the empty one).
 
 Run right after the placement loop, before fanout.  `place.py` does that.
-It runs AGAIN in `make build` just before silk_finish, because a pass after
-the placement loop strips the angles a second time. Measured on the example
-board as committed (2026-09-30): 16 pads on R3-R7, C1, C6, C7 at 0 deg on
-footprints rotated 90/270, in both pre_route.kicad_pcb and the routed board.
-The kct-saving pass (fanout) is the suspect, not proven. The second run holds
-regardless of which pass it is.
+It runs AGAIN in `make build` just before silk_finish, as insurance. The
+example board as committed (built before 2026-09-30) has 16 pads on R3-R7,
+C1, C6, C7 at 0 deg on footprints rotated 90/270, in pre_route.kicad_pcb and
+the routed board alike. A rebuild on 2026-09-30 in the pinned container came
+out correct, and the second run found nothing to fix, so the pass that
+stripped them was not reproduced. A second run costs a second; that fault
+reaching the fab costs a board.
 Idempotent: the target angle is computed from the library each time, so a
 second run finds every pad already correct and does not rewrite the board.
 
