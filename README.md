@@ -42,6 +42,20 @@ clean, every residual DRC item explained in its `rev-1-plan.md` ledger — but
 `examples/unoq-power-shield` as a pipeline exercise, not a verified
 reference design.
 
+**2026-09-30: two new gates fail the example as committed.** Both were real
+defects that the earlier gates passed:
+
+- **J4 (Qwiic) is rotated 180°.** Its signal leads face the board edge and
+  its socket opens into the board. Found by `check_placement`, which now
+  derives which way a connector faces from its rotation.
+- **16 pads on eight rotated passives lie along the part axis** (R3–R7,
+  C1, C6, C7). Found by `fix_pad_angles --check`. A pass after the
+  placement loop strips the pad angles again, so `make build` now runs
+  `fix_pad_angles` a second time.
+
+Both need a rebuild, a re-route and a new sign-off, recorded in the
+example's `rev-1-plan.md`. The board files here are the pre-fix build.
+
 If you want only the fab-output checker, it stands alone with no dependencies
 at [gerber-check](https://github.com/ramalamadingdong/gerber-check).
 
@@ -104,7 +118,9 @@ PCBWay. MIT. This is the install that matters most.
 /new-board     an idea, interviewed into a cited plan and a netlist.csv
 /build         netlist.csv -> schematic -> board -> placement -> zones -> silk
 /route         snapshot -> Freerouting -> DRC x5 -> gerbers
-/check         validate the board AND the fab package against board.toml
+/check         ERC, pad angles, DRC x5, placement, and the fab package, all gated
+/improve-placement   look at where routing got stuck, try floorplan edits,
+               keep only what a rebuild + re-route measures as better
 /doctor        is this machine able to run any of it
 ```
 
@@ -136,11 +152,25 @@ Working now:
   by aperture. Runs in about a second off the board file, so a floorplan
   mistake surfaces while the floorplan is still what you are editing, not
   fifteen minutes later in the fab package.
-- **`scripts/doctor.py`** — environment preflight.
+- **`scripts/build/drc_sample.py`, `erc_check.py`**: levels 1 and 2 as
+  gates, not reports. DRC runs 5×, and anything unexplained in any run fails.
+  The explanations live in `board.toml` as `[[drc.accept]]` entries, each
+  with its reason. An entry that stops matching fails too. Connectivity
+  parity (the board's nets against the schematic) is gated even though KiCad
+  ships it as a warning.
+- **`check_netlist`** in `validate_gerbers.py`: level 0 on what ships. The
+  export includes an IPC-D-356 netlist (the file a fab's electrical test
+  probes against), and the checker holds it to `netlist.csv` pin by pin.
+- **`scripts/build/render_review.py`** (`make render`): a PNG per copper layer
+  with the ratsnest in red and completion-pass copper in orange, for level 3
+  and `/improve-placement`. **`score_route.py`** (`make score`): one
+  comparable score for a routed board, measured, never read from the
+  router's log.
+- **`scripts/doctor.py`**: environment preflight.
 - **`CLAUDE.md`** — the rules. This is what keeps an agent from undoing the
   work: don't edit board files, fixes go in the pipeline, every pass
   idempotent, don't trust a tool's self-report, get the document.
-- **`commands/`** — the five slash commands.
+- **`commands/`**: the six slash commands.
 - **`templates/`** — `netlist.csv` schema and a commented `board.toml`.
 
 Also here now:
@@ -199,6 +229,10 @@ working.
 - [kicad-happy](https://github.com/aklofas/kicad-happy) — Andrew Klofas, MIT
 - [kicad-tools](https://github.com/rjwalters/kicad-tools) — RJ Walters, MIT
 - [Freerouting](https://github.com/freerouting/freerouting)
+- [KiCad-AI-Assistant](https://github.com/paul356/KiCad-AI-Assistant) (MIT,
+  © 2025 Lama Al Rajih): `render_review.py`'s per-layer panels and MST
+  ratsnest follow the approach of its board renderer. The ideas are
+  borrowed; no code was copied.
 - [KiCad](https://www.kicad.org/)
 
 GPL-3.0 — the build passes import `pcbnew`, which is GPL-3.0, and now that

@@ -183,7 +183,7 @@ def main() -> int:
     # newline="" so the write cannot re-encode line endings. Without it a
     # Windows run turns every LF in the board into CRLF while the mounting-hole
     # pass turns them back, and neither is ever byte-stable.
-    board.write_text("".join(out), encoding="utf-8", newline="")
+    _lib.write_text_atomic(board, "".join(out))
     nets = _lib.assert_net_table(board)
 
     print(

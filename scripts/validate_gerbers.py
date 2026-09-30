@@ -410,6 +410,9 @@ class FabPackage:
     # None = not configured, True = outline matched, False = mismatch.
     # Coordinate-based checks must not report PASS unless this is True.
     frame_verified: bool | None = None
+    # IPC-D-356 netlist(s) in the package, and the netlist.csv to hold them to
+    ipc356: list[Path] = field(default_factory=list)
+    netlist_csv: Path | None = None
 
 
 def load_package(root: Path) -> FabPackage:
@@ -417,6 +420,9 @@ def load_package(root: Path) -> FabPackage:
     files = sorted(p for p in root.rglob("*") if p.is_file())
     for p in files:
         suffix = p.suffix.lower()
+        if suffix in (".d356", ".ipc", ".356"):
+            pkg.ipc356.append(p)
+            continue
         if suffix == ".gbrjob":
             try:
                 pkg.job = json.loads(p.read_text(errors="replace"))
@@ -846,8 +852,107 @@ def check_rf_budget(pkg: FabPackage, cfg: dict, rep: Report) -> None:
             rep.ok(f"rf/{net}", f"{total:.1f}mm of {limit}mm")
 
 
+IPC_NC = "N/C"
+IPC_NET_WIDTH = 14
+
+
+def parse_ipc356(path: Path) -> tuple[dict[tuple[str, str], set[str]], dict[str, str]]:
+    """(ref, pin) -> nets, from the 317/327 records of an IPC-D-356 file.
+
+    Fixed columns (IPC-D-356A): record type 1-3, net 4-17, refdes 21-26,
+    '-' 27, pin 28-31. Vias (refdes VIA) carry no pin and are skipped; 367
+    records are non-plated holes. A net name longer than 14 characters does
+    not fit its field; `P  NNAMEn <full name>` parameter records alias it,
+    and are honoured when present.
+    """
+    nodes: dict[tuple[str, str], set[str]] = {}
+    alias: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("P "):
+            m = re.match(r"P\s+(NNAME\d+)\s+(\S.*)$", line)
+            if m:
+                alias[m.group(1)] = m.group(2).strip()
+            continue
+        if line[:3] not in ("317", "327") or len(line) < 28:
+            continue
+        ref = line[20:26].strip()
+        if not ref or ref == "VIA" or line[26] != "-":
+            continue
+        net = line[3:17].strip()
+        pin = line[27:31].strip()
+        nodes.setdefault((ref, pin), set()).add(alias.get(net, net))
+    return nodes, alias
+
+
+def check_netlist(pkg: FabPackage, cfg: dict, rep: Report) -> None:
+    """Level 0, run on what ships: the package's netlist against netlist.csv.
+
+    The round-trip diff in the build proves the SCHEMATIC matches
+    netlist.csv. Fifteen passes rewrite the board after that. This proves
+    the netlist the fab will e-test against (the IPC-D-356 export) still
+    says what netlist.csv says: every (ref, pin) on its net, nothing extra.
+    `[[pin_alias]]` entries in board.toml are applied the way the schematic
+    generator applies them (`lib_pin` renames the pad, `skip` drops it).
+    """
+    if not pkg.ipc356:
+        rep.skip("netlist", "no IPC-D-356 netlist (.d356/.ipc) in the package -- "
+                            "nothing proves the shipped copper matches netlist.csv")
+        return
+    if pkg.netlist_csv is None or not pkg.netlist_csv.exists():
+        rep.skip("netlist", "no netlist.csv given (--netlist, or beside the config)")
+        return
+
+    import csv
+
+    alias: dict[tuple[str, str], str] = {}
+    skip: set[tuple[str, str]] = set()
+    for e in cfg.get("pin_alias") or []:
+        node = (str(e.get("ref", "")), str(e.get("pin", "")))
+        if e.get("lib_pin"):
+            alias[node] = str(e["lib_pin"])
+        if e.get("skip"):
+            skip.add(node)
+
+    expected: dict[tuple[str, str], str] = {}
+    with pkg.netlist_csv.open(encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            net = (row.get("Net") or "").strip()
+            node = ((row.get("RefDes") or "").strip(), (row.get("Pin") or "").strip())
+            if not net or not node[0] or node in skip:
+                continue
+            expected[(node[0], alias.get(node, node[1]))] = net
+
+    for path in pkg.ipc356:
+        actual, nnames = parse_ipc356(path)
+        name = f"netlist/{path.name}"
+        problems: list[str] = []
+        for node, net in sorted(expected.items()):
+            got = actual.get(node)
+            if not got:
+                problems.append(f"{node[0]}.{node[1]} ({net}): not in the package")
+                continue
+            want = net if len(net) <= IPC_NET_WIDTH or net in nnames.values() \
+                else net[:IPC_NET_WIDTH]
+            if got != {want}:
+                problems.append(f"{node[0]}.{node[1]}: package says "
+                                f"{'/'.join(sorted(got))}, netlist.csv says {net}")
+        for node, nets in sorted(actual.items()):
+            if node in expected or nets <= {IPC_NC}:
+                continue
+            problems.append(f"{node[0]}.{node[1]} on {'/'.join(sorted(nets))}: "
+                            f"not in netlist.csv")
+        if problems:
+            rep.bad(name, f"{len(problems)} mismatch(es): " + "; ".join(problems[:8])
+                    + (" ..." if len(problems) > 8 else ""))
+        else:
+            on_nets = sum(1 for n in actual.values() if n != {IPC_NC})
+            rep.ok(name, f"{len(expected)} netlist.csv pins all on their nets, "
+                         f"{on_nets} package pins, none extra")
+
+
 CHECKS = [
     check_package_sane,
+    check_netlist,
     check_frame,
     check_planes_clean,
     check_power_widths,
@@ -956,6 +1061,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("package", nargs="?", help="directory containing the exported gerbers")
     ap.add_argument("-c", "--config", default="board.toml", help="rules file")
+    ap.add_argument("--netlist", default=None,
+                    help="netlist.csv to hold the package's IPC-D-356 netlist to "
+                         "(default: netlist.csv beside the config, if present)")
     ap.add_argument("--init", action="store_true", help="write a starter board.toml and exit")
     ap.add_argument("--no-color", action="store_true")
     args = ap.parse_args(argv)
@@ -990,6 +1098,8 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     pkg = load_package(root)
+    netlist = Path(args.netlist) if args.netlist else cfg_path.parent / "netlist.csv"
+    pkg.netlist_csv = netlist if netlist.exists() else None
     rep = Report()
     for check in CHECKS:
         try:

@@ -18,8 +18,14 @@ Verify rather than trust:
 - Count copper segments before and after the router call. Correct net list
   plus zero copper is a silent no-op, and its self-report won't say so.
 - A pass reporting no violations while laying traces through other nets' pads
-  is not evidence. Run DRC yourself, five or more times, and compare which
-  violations appear rather than the count.
+  is not evidence. `route.py` runs DRC five times (`drc_sample.py`), and
+  **fails** on anything unexplained in any run: an error missing from the
+  `[[drc.accept]]` ledger, an unconnected item, or a ledger entry that no
+  longer matches. Fix the board. Add a ledger entry only for a real,
+  explained exception, with its reason.
+- `unrouted_after_router` in the JSON is what Freerouting left, counted by
+  pcbnew before the completion passes. When it is large, the fix is usually
+  placement: see `/improve-placement`.
 
 Declaring an inner layer a plane costs a routing layer — expect a chunk of
 nets unrouted after the first pass and finish them with a completion pass.

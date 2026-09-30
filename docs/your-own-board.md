@@ -41,7 +41,8 @@ numbers. Never write a KiCad page coordinate into board.toml.
 | `[direct]` | direct_connect | `overlap_mm` / `clearance_mm` for `Direct`-tagged netlist rows: parts placed pad-on-pad against a pin already on their net. Every pair shows up in DRC as an expected `courtyards_overlap`, listed in the pass's JSON |
 | `[mounting_holes]`, `[fiducials]` | passes AND checker | positions place them; count/diameter checks them in the gerbers |
 | `[[keepouts]]` | add_keepouts, silk, router passes, both checkers | one rectangle feeds the rule area, the silk dodge, the router fences, the board check and the gerber check |
-| `[[connectors]]` | check_placement | which parts you plug into from an EDGE, and how much room the plug and cable need in front. Edge-mating only — a vertical stacking header mates from above and is not modelled |
+| `[[connectors]]`, `[connector_footprints]`, `[connector_policy]` | check_placement | every part a person plugs into. Edge connectors: the room the plug and cable need, **and which way the part actually faces**, derived from its rotation against the footprint's datasheet opening. Vertical/stacking headers: a clear access ring on the mating side. An undeclared J/P/CN/USB ref fails |
+| `[drc]`, `[[drc.accept]]`, `[[erc.accept]]` | drc_sample, erc_check | the ledger of explained violations: exact refs plus a reason. Anything else fails route and check, and so does an entry that stops matching |
 | `[[zones.pour]]`, `[layers] planes` | zones, export_dsn, checker | pours; plane layers are routing-banned and gerber-checked for stray tracks |
 | `[nets.power]` | apply_netclasses + checker | patterns pin nets to the power netclass BY NAME; `min_width_mm` is the checker floor; `plane_fed` exempts short pad-escape chains on plane-backed nets |
 | `[[fanout.thermal_vias]]` | fanout | vias at named pads — exposed pads, and any pour island the DRC shows floating |
@@ -85,18 +86,32 @@ courtyard grazes) are judgment calls the report describes precisely.
 ## 4. Route and check
 
 ```bash
-make route BOARD_DIR=path/to/yours     # snapshot → freerouting → completion → DRC ×5
-make check BOARD_DIR=path/to/yours     # the gerber checker, on the real export
+make route BOARD_DIR=path/to/yours     # snapshot → freerouting → completion → DRC ×5, gated
+make export BOARD_DIR=path/to/yours    # gerbers, drill, pos, IPC-D-356
+make check BOARD_DIR=path/to/yours     # ERC, pad angles, DRC ×5, placement, fab package
+make render BOARD_DIR=path/to/yours    # review/*.png: look at it
 ```
 
-Read the route JSON line, not the router's mood: `segments_after_router`
-must be well above `segments_before` (a silent no-op is detected and
-fails, but look anyway), `unfixed` names nets the completion couldn't
-finish, and the DRC block shows violation *kinds* across five runs —
-stable kinds are real, unstable ones are DRC nondeterminism.
+Read the route JSON line, not the router's mood:
+- `segments_after_router` must be well above `segments_before`. A silent
+  no-op is detected and fails, but look anyway.
+- `unrouted_after_router` is what Freerouting left, counted by pcbnew
+  before completion.
+- `unfixed` names nets the completion couldn't finish.
+- The `drc` block lists every violation not in your `[[drc.accept]]` ledger.
+  The route fails if there is any.
+
+The first route of a new board will fail the DRC gate. That is expected.
+For each violation, either fix it (almost always in the floorplan) or,
+when it is a real exception, add a `[[drc.accept]]` entry naming its refs
+and the reason a reviewer would accept.
 
 Nets the completion leaves unfixed usually mean a congested corner:
 give the parts room in the floorplan rather than fighting the router.
+`/improve-placement` does that as measured trials. It looks at the render,
+proposes floorplan edits, rebuilds and re-routes each one in a scratch
+copy, and keeps only what `score_route.py` measures as better. Then it
+stops for your sign-off.
 A DRC "zones not connected" usually means a pour island holding a pad
 with no via — `island_diag`-style inspection names the pad; give it a
 `[[fanout.thermal_vias]]` entry.
@@ -106,8 +121,10 @@ with no via — `island_diag`-style inspection names the pad; give it a
 Your plan doc ends with the gate list. Nothing ships until:
 
 - schematic round-trip diff clean (the build fails otherwise)
-- ERC clean, DRC ×5 with zero errors and explained warnings
+- ERC clean, DRC ×5 with zero errors and explained warnings: `make check`
+  enforces both, against the ledger in board.toml
 - `make check` green — SKIPs investigated, not counted
+- every ledger entry's reason re-read. An acceptance is a claim.
 - every part re-verified in stock at order time
 - the exact ordered files committed byte-for-byte
 

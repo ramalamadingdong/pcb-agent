@@ -35,7 +35,10 @@ evidence. Verify with an independent check. Count segments before and after
 every router call so you catch a silent no-op.
 
 **Don't wave off a warning from a checker.** That's swapping a measurement for
-an assumption.
+an assumption. An exception goes in the `board.toml` ledger
+(`[[drc.accept]]`, `[[erc.accept]]`, `accept_blockers`) with exact refs and a
+reason a reviewer would accept. It never goes in the gate's code, and it is
+never added just to turn a gate green.
 
 **Don't assume generated defaults match your names.** Netclass patterns, layer
 names, part rotation conventions. Nothing errors; the output is just wrong.
@@ -75,6 +78,10 @@ Don't remove these, and don't reorder them.
 - **Fanout checks all four spacings it creates**, including the stub running
   past the next pad's via. DRC uses the larger of the two nets' clearances, so
   a fine-pitch escape past ground copper is held to the ground net's rule.
+- **`fix_pad_angles` runs twice**: once at the end of the placement loop,
+  and again just before silk. A pass after the placement loop strips pad
+  angles a second time (16 pads on the example, 2026-09-30).
+  `make check` runs it with `--check`, so the fault can't reach the fab.
 - **`silk_finish` repositions every refdes.** The coordinate corruption that
   hits pads also hits reference and value fields, and a pad-only repair
   doesn't touch them. The fab clips anything off board, so without this the

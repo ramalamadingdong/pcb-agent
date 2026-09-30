@@ -69,14 +69,38 @@ y2 = 30.0
 min_count = 9
 
 # --------------------------------------------------------------------------
-# Connectors you plug into from a board EDGE. Checked by
-# scripts/build/check_placement.py (`make check-placement`), which measures
-# the gap from the connector's mating face to the outline and sweeps the
-# corridor a plug and its cable need for anything in the way.
+# Every connector a person plugs into. Checked by
+# scripts/build/check_placement.py (`make check-placement`).
 #
-# Only edge-mating parts belong here. A vertical stacking header mates from
-# ABOVE and this check has no model for that — declaring one would measure a
-# corridor nothing uses.
+# EDGE connectors (the default): the gap from the mating face to the outline,
+# the corridor a plug and its cable need, and WHICH WAY THE PART ACTUALLY
+# FACES. That is derived from its rotation, by fitting its pads to the
+# library footprint, and compared with the opening you read off the
+# datasheet (below). A part rotated 180 deg at the edge otherwise passes
+# every clearance test while its opening points into the board.
+#
+# VERTICAL connectors (pin headers, top-entry sockets, a shield's stacking
+# headers): an access ring on the mating side must be clear of other parts.
+#
+# Any ref starting J/P/CN/USB that is in neither list below FAILS: an
+# undeclared connector is one nothing ever checked.
+#
+# Opening direction per FOOTPRINT, library-local (+x/-x/+y/-y), from the
+# datasheet land drawing; write down the page:
+# [connector_footprints."USB_C_Receptacle_XYZ"]
+# opening = "-y"
+# source  = "XYZ.pdf p.4: mating face is the edge opposite the SMT legs"
+#
+# [connector_policy]
+# prefixes       = ["J", "P", "CN", "USB"]   # default
+# not_user_mated = [{ ref = "J9", reason = "SWD pads, pogo-pin fixture only" }]
+#
+# [[connectors]]
+# ref             = "J5"
+# mating          = "vertical"
+# mating_side     = "bottom"     # where the plug comes from: "top" for a
+#                                # cable header, "bottom" for a shield's pins
+# access_margin_mm = 1.0         # housing + finger room around the courtyard
 #
 # Mounting holes in a corridor are inflated to [mounting_holes]
 # head_diameter_mm first: the obstruction is the SCREW HEAD, ~5.5-6 mm on an
@@ -101,6 +125,27 @@ min_count = 9
 
 # [mounting_holes]
 # head_diameter_mm = 6.0        # optional, default 6.0
+
+# --------------------------------------------------------------------------
+# The DRC and ERC ledgers. route.py and `make check` sample DRC 5x and FAIL
+# on anything not explained here; `make check` runs ERC the same way. Every
+# entry names the exact refs and carries its reason. An entry that matches
+# nothing also fails: a stale acceptance is a check that passes forever.
+#
+# [drc]
+# runs          = 5
+# gate_warnings = false          # warnings are always reported
+#
+# [[drc.accept]]
+# kind   = "courtyards_overlap"  # the DRC `type` from the JSON report
+# refs   = ["H1", "J13"]         # exact set of refs the violation names
+# count  = 1                     # how many per run this entry may absorb
+# reason = "UNO form factor: both positions fixed by the host board"
+#
+# [[erc.accept]]
+# kind   = "pin_not_driven"
+# refs   = ["U3"]
+# reason = "..."
 
 # A keepout bans pads too, as far as this checker is concerned — KiCad DRC
 # does not, so nothing else would ever catch one. Opt out per keepout:

@@ -17,6 +17,7 @@ PCB ?= $(BOARD_DIR)/$(NAME).kicad_pcb
 SNAPSHOT ?= $(BOARD_DIR)/pre_route.kicad_pcb
 ROUNDS ?= 4
 PASSES ?= 100
+REPORT ?= $(BOARD_DIR)/build/route.json
 
 # The pinned toolchain. These are the source of truth: setup passes them to
 # docker build and the jar fetcher. The Dockerfile carries matching defaults
@@ -32,7 +33,7 @@ endif
 RUN := $(if $(HAVE_IMAGE),./run.sh )
 P := python3 scripts/build
 
-.PHONY: doctor build route export check check-placement clean setup
+.PHONY: doctor build route export check check-placement drc erc render score clean setup
 
 setup:
 	docker build -t $(IMAGE) \
@@ -54,7 +55,9 @@ doctor:
 # keepouts before silk (silk avoids the declared rectangles). direct_connect
 # runs twice: `pre` snaps Direct-tagged parts onto anchored targets so
 # place.py can hold them, `post` snaps the rest once the optimiser and
-# flip_sides have put their targets where they stay.
+# flip_sides have put their targets where they stay. fix_pad_angles
+# runs a second time before silk: a pass after the placement loop strips
+# pad angles again (16 pads on the committed example; see that pass).
 build:
 	$(RUN)$(P)/make_libs.py --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/generate_schematic.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG)
@@ -71,32 +74,60 @@ build:
 	$(RUN)$(P)/fanout.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/add_fiducials.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/add_keepouts.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+	$(RUN)$(P)/fix_pad_angles.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/silk_finish.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 	$(RUN)$(P)/zones.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --fill-only
 	cp $(PCB) $(SNAPSHOT)
 	@echo "snapshot: $(SNAPSHOT)"
 
 # Snapshot -> Freerouting (xvfb, -mt 1, foreground) -> completion stack ->
-# DRC x5 (compare violation kinds, not counts). Re-runnable without paying
-# for a rebuild: it always starts from the snapshot.
+# DRC x5, GATED against the [[drc.accept]] ledger. Re-runnable without paying
+# for a rebuild: it always starts from the snapshot. Its JSON also lands in
+# $(REPORT) for `make render` and `make score`.
 route:
-	$(RUN)$(P)/route.py --board $(PCB) --snapshot $(SNAPSHOT) --netlist $(NETLIST) --config $(CONFIG) --passes $(PASSES)
+	$(RUN)$(P)/route.py --board $(PCB) --snapshot $(SNAPSHOT) --netlist $(NETLIST) --config $(CONFIG) --passes $(PASSES) --report $(REPORT)
 
 export:
 	$(RUN)$(P)/export_fab.py --board $(PCB) --config $(CONFIG)
 
-# Two halves, and only the second one is dependency-free. check_placement
-# reads the BOARD through pcbnew and can name what it found (`R12 pad 2`);
-# validate_gerbers reads the exported bytes as text and cannot, but those are
-# the bytes the fab will plot. A pass in the first and a fail in the second
-# means the export moved something -- which is the whole point of having both.
-check: check-placement
-	@$(RUN)python3 scripts/validate_gerbers.py $(BOARD_DIR)/fab -c $(CONFIG)
+# Levels 1, 2 and 4, each gated. ERC on the schematic; pad angles, DRC x5
+# (on a filled COPY -- check writes nothing) and placement on the board;
+# then the fab package, including its IPC-D-356 netlist against netlist.csv.
+# The board-side checks can name what they found (`R12 pad 2`); the gerber
+# checker reads the bytes the fab will plot and cannot. A pass on the board
+# and a fail on the package means the export moved something -- which is the
+# whole point of having both. `-k` semantics: run every gate, fail at the end.
+check:
+	@fail=0; \
+	$(RUN)$(P)/erc_check.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG) >/dev/null || fail=1; \
+	$(RUN)$(P)/fix_pad_angles.py --check --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) >/dev/null || fail=1; \
+	$(RUN)$(P)/drc_sample.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) >/dev/null || fail=1; \
+	$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) >/dev/null || fail=1; \
+	$(RUN)python3 scripts/validate_gerbers.py $(BOARD_DIR)/fab -c $(CONFIG) --netlist $(NETLIST) || fail=1; \
+	exit $$fail
 
 # Connector accessibility + copper in keepouts, straight off the board file.
 # Runs warn-only inside `build` (where the board is not final) and hard here.
 check-placement:
 	@$(RUN)$(P)/check_placement.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
 
+# The individual gates, for iterating on one of them.
+drc:
+	@$(RUN)$(P)/drc_sample.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG)
+
+erc:
+	@$(RUN)$(P)/erc_check.py --schematic $(SCH) --netlist $(NETLIST) --config $(CONFIG)
+
+# Pictures for review (level 3, /improve-placement): per copper layer, with
+# the ratsnest in red and what the completion passes finished in orange, plus
+# KiCad's own plots in review/kicad/. Writes nothing to the board.
+render:
+	@$(RUN)$(P)/render_review.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --out $(BOARD_DIR)/review $(if $(wildcard $(REPORT)),--route-report $(REPORT))
+
+# One comparable number for a routed board (see score_route.py). Pass
+# BASELINE=path/to/score.json to compare.
+score:
+	@$(RUN)$(P)/score_route.py --board $(PCB) --netlist $(NETLIST) --config $(CONFIG) --out $(BOARD_DIR)/build/score.json $(if $(wildcard $(REPORT)),--route-report $(REPORT)) $(if $(BASELINE),--baseline $(BASELINE))
+
 clean:
-	rm -rf $(BOARD_DIR)/fab $(BOARD_DIR)/build
+	rm -rf $(BOARD_DIR)/fab $(BOARD_DIR)/build $(BOARD_DIR)/review

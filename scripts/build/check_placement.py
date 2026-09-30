@@ -85,6 +85,8 @@ Usage::
 
 from __future__ import annotations
 
+import math
+import re
 import sys
 from pathlib import Path
 
@@ -294,14 +296,144 @@ def corridor(part, board_box, face: str, depth: int, lateral: int, behind: int):
     return (lo, part[3] - behind, hi, board_box[3] + depth)
 
 
-def check_connectors(b, cfg: dict, rep: Report) -> list[dict]:
+LOCAL_DIRS = {"+x": (1.0, 0.0), "-x": (-1.0, 0.0), "+y": (0.0, 1.0), "-y": (0.0, -1.0)}
+LIB_PAD_RE = re.compile(
+    r'\(pad\s+(?:"([^"]*)"|(\S+))\s+\S+\s+\S+\s*\(at\s+([-\d.]+)\s+([-\d.]+)'
+)
+DEFAULT_PREFIXES = ["J", "P", "CN", "USB"]
+
+
+def library_pad_positions(lib: Path, fp_name: str) -> dict[str, tuple[float, float]] | None:
+    """pad number -> library-local (x, y) mm, for numbers that occur once."""
+    path = lib / f"{fp_name.split(':')[-1]}.kicad_mod"
+    if not path.exists():
+        return None
+    seen: dict[str, list[tuple[float, float]]] = {}
+    for m in LIB_PAD_RE.finditer(path.read_text(encoding="utf-8", errors="replace")):
+        num = m.group(1) if m.group(1) is not None else m.group(2)
+        seen.setdefault(num, []).append((float(m.group(3)), float(m.group(4))))
+    return {n: v[0] for n, v in seen.items() if len(v) == 1 and n}
+
+
+def fit_library_to_board(pairs, flipped: bool):
+    """Library-local -> board transform, fitted from the part's own pads.
+
+    No rotation-sign or flip convention is assumed. Both hypotheses (a pure
+    rotation, and a rotation after a mirror) are fitted by least squares to
+    (library position, board position) pad pairs, and the smaller residual
+    wins. If the pads are collinear (a single-row connector) the two fit
+    equally well: a front-side part cannot be mirrored, so that case is
+    decided by the side, and a back-side single-row part is undecidable
+    from pads alone.
+
+    Returns (apply(dx, dy) -> (wx, wy), note) or (None, why).
+    """
+    if len(pairs) < 2:
+        return None, "fewer than 2 uniquely numbered pads to fit against"
+    n = len(pairs)
+    lcx = sum(p[0] for p in pairs) / n
+    lcy = sum(p[1] for p in pairs) / n
+    wcx = sum(p[2] for p in pairs) / n
+    wcy = sum(p[3] for p in pairs) / n
+    fits = []
+    for mirror in (False, True):
+        s_cos = s_sin = 0.0
+        pts = []
+        for lx, ly, wx, wy in pairs:
+            x, y = lx - lcx, ly - lcy
+            if mirror:
+                x = -x
+            u, v = wx - wcx, wy - wcy
+            pts.append((x, y, u, v))
+            s_cos += x * u + y * v
+            s_sin += x * v - y * u
+        th = math.atan2(s_sin, s_cos)
+        c, s = math.cos(th), math.sin(th)
+        resid = sum((x * c - y * s - u) ** 2 + (x * s + y * c - v) ** 2
+                    for x, y, u, v in pts)
+        fits.append((resid, mirror, c, s))
+    fits.sort()
+    best, other = fits
+    if best[0] > 0.01 * n:
+        return None, (f"board pads do not match the library footprint "
+                      f"(fit residual {best[0]:.3f} mm2) -- corrupted pads? "
+                      f"run fix_pad_angles/repair_pads")
+    if other[0] - best[0] < 1e-6:           # collinear: mirror is invisible
+        if flipped:
+            return None, ("single-row part on the back side: the pads cannot tell "
+                          "a mirror from a rotation")
+        best = next(f for f in fits if not f[1])
+    _r, mirror, c, s = best
+
+    def apply(dx: float, dy: float) -> tuple[float, float]:
+        if mirror:
+            dx = -dx
+        return (dx * c - dy * s, dx * s + dy * c)
+
+    return apply, ("mirrored" if mirror else "")
+
+
+def world_face(wx: float, wy: float) -> str | None:
+    """KiCad-frame direction (Y down) -> board-frame face name, or None if diagonal."""
+    if abs(abs(wx) - abs(wy)) < 0.2:
+        return None
+    if abs(wx) > abs(wy):
+        return "right" if wx > 0 else "left"
+    return "bottom" if wy > 0 else "top"      # KiCad +Y is board-frame down
+
+
+def connector_opening(fp, cfg: dict, lib: Path | None):
+    """Board-frame face the plug enters from, derived from the part's rotation.
+
+    Returns (face, detail) or (None, reason). The opening is a property of
+    the FOOTPRINT, read off its datasheet land drawing, and lives in
+    ``[connector_footprints."<name>"] opening = "+y"`` (library-local axes).
+    """
+    fname = str(fp.GetFPID().GetLibItemName())
+    table = cfg.get("connector_footprints") or {}
+    spec = table.get(fname)
+    if not spec or not spec.get("opening"):
+        return None, (f'no opening direction for footprint "{fname}" -- read it '
+                      f'off the datasheet land drawing and add [connector_footprints.'
+                      f'"{fname}"] opening = "<+x|-x|+y|-y>" (library-local), '
+                      f'with the page it came from')
+    d = str(spec["opening"]).lower()
+    if d not in LOCAL_DIRS:
+        _lib.fail(f'[connector_footprints."{fname}"] opening={d!r}; expected '
+                  f'{", ".join(LOCAL_DIRS)}')
+    if lib is None:
+        return None, "no footprint library to fit the part's rotation against"
+    lib_pos = library_pad_positions(lib, fname)
+    if not lib_pos:
+        return None, f"{fname}.kicad_mod not found in {lib}"
+    pairs = []
+    for pad in fp.Pads():
+        num = pad.GetNumber()
+        if num in lib_pos:
+            pos = pad.GetPosition()
+            pairs.append((*lib_pos[num], pcbnew.ToMM(pos.x), pcbnew.ToMM(pos.y)))
+    apply, note = fit_library_to_board(pairs, fp.IsFlipped())
+    if apply is None:
+        return None, note
+    face = world_face(*apply(*LOCAL_DIRS[d]))
+    if face is None:
+        return None, "rotated off-axis (not a multiple of 90 deg) -- no board edge to face"
+    return face, f"opening {d} in the library -> {face}" + (f" ({note})" if note else "")
+
+
+def check_connectors(b, cfg: dict, rep: Report, board_path: Path | None = None) -> list[dict]:
     conns = cfg.get("connectors") or []
+    check_undeclared(b, cfg, rep)
     if not conns:
         rep.skip(
             "connectors",
             "no [[connectors]] declared -- nothing checks that a plug fits",
         )
         return []
+    lib = None
+    if board_path is not None and cfg.get("connector_footprints"):
+        from fix_pad_angles import footprint_lib
+        lib = footprint_lib(cfg, board_path)
 
     FM = pcbnew.FromMM
     board_box = rect_of(b.GetBoardEdgesBoundingBox())
@@ -311,9 +443,15 @@ def check_connectors(b, cfg: dict, rep: Report) -> list[dict]:
     )
 
     parts: dict[str, tuple] = {}
+    fps: dict[str, object] = {}
+    side: dict[str, str] = {}
     no_courtyard: list[str] = []
     for fp in b.GetFootprints():
         ref = fp.GetReference()
+        fps[ref] = fp
+        # holes are through the board: the screw head is on one side, the nut
+        # or standoff on the other, so a hole blocks both
+        side[ref] = "both" if ref in holes else ("bottom" if fp.IsFlipped() else "top")
         r, had = courtyard_rect(fp)
         if ref in holes:
             # The screw head, not the hole. See the module docstring.
@@ -343,10 +481,21 @@ def check_connectors(b, cfg: dict, rep: Report) -> list[dict]:
             continue
 
         part = parts[ref]
+        mating = str(c.get("mating", "edge")).lower()
+        if mating == "vertical":
+            out.append(check_vertical(ref, c, where, part, parts, side, holes, rep))
+            continue
+        if mating != "edge":
+            _lib.fail(f"{where} mating={mating!r}; expected edge or vertical")
+
+        # Which way does the part ACTUALLY face? Derived from its rotation, not
+        # declared. A part rotated 180 deg at the right edge passes every
+        # corridor test while its opening points into the board.
+        opening, why = connector_opening(fps[ref], cfg, lib)
         face = str(c.get("face", "auto")).lower()
         if face == "auto":
-            face = nearest_face(part, board_box)
-            auto = " (auto)"
+            face = opening or nearest_face(part, board_box)
+            auto = " (from rotation)" if opening else " (auto, nearest edge)"
         elif face not in FACES:
             _lib.fail(f"{where} face={face!r}; expected one of {', '.join(FACES)} or auto")
         else:
@@ -381,6 +530,15 @@ def check_connectors(b, cfg: dict, rep: Report) -> list[dict]:
             f"corridor {pcbnew.ToMM(depth):.1f} mm deep"
         )
         problems = []
+        if opening is None:
+            problems.append(f"orientation not verified: {why}")
+        elif opening != face:
+            problems.append(
+                f"ROTATED: its opening faces {opening}, not the {face} edge "
+                f"({why}) -- the plug would have to enter from inside the board"
+            )
+        else:
+            detail += f"; {why}"
         if gap > max_gap:
             problems.append(
                 f"sits {gap:.2f} mm inboard of the {face} edge (max "
@@ -411,7 +569,9 @@ def check_connectors(b, cfg: dict, rep: Report) -> list[dict]:
         out.append(
             {
                 "ref": ref,
+                "mating": "edge",
                 "face": face,
+                "opening_face": opening,
                 "edge_gap_mm": round(gap, 3),
                 "blockers": [
                     {"ref": r_, "kind": k, "area_mm2": round(a, 2)} for r_, k, a in blockers
@@ -423,6 +583,101 @@ def check_connectors(b, cfg: dict, rep: Report) -> list[dict]:
             }
         )
     return out
+
+
+def check_vertical(ref, c, where, part, parts, side, holes, rep: Report) -> dict:
+    """A connector that mates from above or below: pin headers, top-entry
+    sockets, the stacking headers of a shield.
+
+    The plug (or the host board's socket) comes straight down onto the
+    part, so what has to be clear is a ring around it on the MATING side:
+    the plug housing, a finger to pull it, and a latch to press. Other
+    courtyards on that side inside the ring block it. Mounting holes are
+    inflated to the screw head and count on both sides. No height model
+    exists, so a short part in the ring fails as readily as a tall one:
+    accept it (``accept_blockers``) with the reason that it is low.
+
+    ``mating_side`` is where the plug comes from: "top" for a header you
+    plug a cable onto, "bottom" for a shield's pins that go down into the
+    host board's sockets.
+    """
+    name = f"connectors/{ref}"
+    mside = str(c.get("mating_side", "top")).lower()
+    if mside not in ("top", "bottom"):
+        _lib.fail(f"{where} mating_side={mside!r}; expected top or bottom")
+    margin = pcbnew.FromMM(float(c.get("access_margin_mm", 1.0)))
+    ring = (part[0] - margin, part[1] - margin, part[2] + margin, part[3] + margin)
+    accepted_refs = [str(x) for x in (c.get("accept_blockers") or [])]
+    blockers, accepted = [], []
+    for oref, orect in parts.items():
+        if oref == ref or side[oref] not in (mside, "both"):
+            continue
+        if not rects_overlap(ring, orect):
+            continue
+        area = overlap_area_mm2(ring, orect)
+        kind = "screw head" if oref in holes else "part"
+        (accepted if oref in accepted_refs else blockers).append((oref, kind, area))
+    stale = [r_ for r_ in accepted_refs if r_ not in {a[0] for a in accepted}]
+    detail = (f"vertical, mates from the {mside}, "
+              f"{pcbnew.ToMM(margin):.1f} mm access ring")
+    problems = []
+    if blockers:
+        problems.append("access ring blocked by " + ", ".join(
+            f"{r_} ({k}, {a:.1f} mm2)" for r_, k, a in sorted(blockers, key=lambda t: -t[2])[:4]))
+    if stale:
+        problems.append("accept_blockers names " + ", ".join(stale) + " but nothing of "
+                        "that ref is in the ring -- a stale acceptance; drop it")
+    if accepted:
+        detail += "; accepted: " + ", ".join(f"{r_} ({k}, {a:.1f} mm2)" for r_, k, a in accepted)
+    if problems:
+        rep.bad(name, detail + "; " + "; ".join(problems))
+    else:
+        rep.ok(name, detail + ", clear")
+    return {
+        "ref": ref,
+        "mating": "vertical",
+        "mating_side": mside,
+        "blockers": [{"ref": r_, "kind": k, "area_mm2": round(a, 2)} for r_, k, a in blockers],
+        "accepted": [{"ref": r_, "kind": k, "area_mm2": round(a, 2)} for r_, k, a in accepted],
+        "ok": not problems,
+    }
+
+
+def check_undeclared(b, cfg: dict, rep: Report) -> None:
+    """Every connector-looking part must be declared or explicitly excused.
+
+    A connector missing from [[connectors]] is not checked at all, and no
+    check running silently looks like a check passing. So any ref with a
+    connector prefix (``[connector_policy] prefixes``) must be either in
+    [[connectors]] or in ``not_user_mated`` with a reason.
+    """
+    pol = cfg.get("connector_policy") or {}
+    prefixes = [str(p) for p in (pol.get("prefixes") or DEFAULT_PREFIXES)]
+    excused: dict[str, str] = {}
+    for e in pol.get("not_user_mated") or []:
+        if not str(e.get("reason") or "").strip():
+            _lib.fail(f"[connector_policy] not_user_mated {e.get('ref')!r} has no reason")
+        excused[str(e.get("ref"))] = str(e["reason"])
+    declared = {str(c.get("ref")) for c in (cfg.get("connectors") or [])}
+    pat = re.compile(r"^(" + "|".join(re.escape(p) for p in prefixes) + r")\d+$")
+    looks = sorted((fp.GetReference() for fp in b.GetFootprints()
+                    if pat.match(fp.GetReference())),
+                   key=lambda r: (re.sub(r"\d", "", r), int(re.sub(r"\D", "", r) or 0)))
+    missing = [r for r in looks if r not in declared and r not in excused]
+    stale = [r for r in excused if r not in looks]
+    if missing or stale:
+        msg = []
+        if missing:
+            msg.append(f"{', '.join(missing)} look like connectors (prefix "
+                       f"{'/'.join(prefixes)}) but are in neither [[connectors]] nor "
+                       f"[connector_policy] not_user_mated -- nothing checks a plug fits")
+        if stale:
+            msg.append(f"not_user_mated names {', '.join(stale)}, not on the board")
+        rep.bad("connectors/declared", "; ".join(msg))
+    else:
+        rep.ok("connectors/declared",
+               f"{len(looks)} connector ref(s), all declared"
+               + (f" ({len(excused)} excused as not user-mated)" if excused else ""))
 
 
 # --------------------------------------------------------------------------
@@ -585,7 +840,7 @@ def main() -> int:
         )
 
     rep = Report()
-    connectors = check_connectors(b, cfg, rep)
+    connectors = check_connectors(b, cfg, rep, board)
     keepouts = check_keepout_copper(b, cfg, rep)
 
     passed = sum(1 for r in rep.rows if r["status"] == "pass")

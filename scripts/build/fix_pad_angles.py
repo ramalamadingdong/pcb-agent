@@ -16,8 +16,18 @@ pads on FOOTPRINT-LOCAL position (pad numbers repeat: shield pegs share a
 number, unnumbered mechanical pads share the empty one).
 
 Run right after the placement loop, before fanout.  `place.py` does that.
+It runs AGAIN in `make build` just before silk_finish, because a pass after
+the placement loop strips the angles a second time. Measured on the example
+board as committed (2026-09-30): 16 pads on R3-R7, C1, C6, C7 at 0 deg on
+footprints rotated 90/270, in both pre_route.kicad_pcb and the routed board.
+The kct-saving pass (fanout) is the suspect, not proven. The second run holds
+regardless of which pass it is.
 Idempotent: the target angle is computed from the library each time, so a
 second run finds every pad already correct and does not rewrite the board.
+
+``--check`` writes nothing: it lists every wrong pad and exits 1. `make
+check` runs it, so a pass that reintroduces the fault fails a gate
+instead of reaching the fab.
 
 Needs `pcbnew`, which on a host KiCad install imports only under KiCad's own
 bundled Python.  Run it with that interpreter (`place.py` honours $KICAD_PYTHON
@@ -87,8 +97,33 @@ def lib_pads(lib: Path, fp_name: str):
     return out
 
 
+def wrong_pads(b, lib: Path) -> list[tuple]:
+    """(footprint, pad, want_deg, have_deg) for every pad off its library angle."""
+    out = []
+    for fp in b.GetFootprints():
+        name = fp.GetFPID().GetLibItemName().wx_str() if hasattr(
+            fp.GetFPID().GetLibItemName(), "wx_str") else str(fp.GetFPID().GetLibItemName())
+        lp = lib_pads(lib, name)
+        fp_rot = fp.GetOrientation().AsDegrees()
+        for pad in fp.Pads():
+            rel = pad.GetFPRelativePosition()
+            lx, ly = pcbnew.ToMM(rel.x), pcbnew.ToMM(rel.y)
+            local_ang = 0.0
+            if lp:
+                best = min(lp, key=lambda q: (q[0] - lx) ** 2 + (q[1] - ly) ** 2)
+                if math.hypot(best[0] - lx, best[1] - ly) < 0.1:
+                    local_ang = best[2]
+            want = (fp_rot + local_ang) % 360
+            have = pad.GetOrientation().AsDegrees() % 360
+            if abs((want - have + 180) % 360 - 180) > 0.01:
+                out.append((fp, pad, want, have))
+    return out
+
+
 def main() -> int:
     ap = _lib.pass_parser(NAME)
+    ap.add_argument("--check", action="store_true",
+                    help="report wrong pads and exit 1; write nothing")
     args = ap.parse_args()
 
     pcb_path = Path(args.board)
@@ -107,29 +142,24 @@ def main() -> int:
             f"pcbnew ({pcbnew.GetBuildVersion()}) could not load {pcb_path} — "
             "usually a KiCad older than the file that wrote it"
         )
-    fixed = fps = 0
-    for fp in b.GetFootprints():
-        name = fp.GetFPID().GetLibItemName().wx_str() if hasattr(
-            fp.GetFPID().GetLibItemName(), "wx_str") else str(fp.GetFPID().GetLibItemName())
-        lp = lib_pads(lib, name)
-        fp_rot = fp.GetOrientation().AsDegrees()
-        changed = 0
-        for pad in fp.Pads():
-            rel = pad.GetFPRelativePosition()
-            lx, ly = pcbnew.ToMM(rel.x), pcbnew.ToMM(rel.y)
-            local_ang = 0.0
-            if lp:
-                best = min(lp, key=lambda q: (q[0] - lx) ** 2 + (q[1] - ly) ** 2)
-                if math.hypot(best[0] - lx, best[1] - ly) < 0.1:
-                    local_ang = best[2]
-            want = (fp_rot + local_ang) % 360
-            have = pad.GetOrientation().AsDegrees() % 360
-            if abs((want - have + 180) % 360 - 180) > 0.01:
-                pad.SetOrientation(pcbnew.EDA_ANGLE(want, pcbnew.DEGREES_T))
-                changed += 1
-        if changed:
-            fps += 1
-            fixed += changed
+    wrong = wrong_pads(b, lib)
+    refs = sorted({fp.GetReference() for fp, _p, _w, _h in wrong})
+
+    if args.check:
+        for fp, pad, want, have in wrong:
+            print(f"  FAIL  {fp.GetReference()} pad {pad.GetNumber()}: angle "
+                  f"{have:g} deg, library + footprint rotation says {want:g}",
+                  file=sys.stderr)
+        if not wrong:
+            print("  PASS  pad angles: every pad at footprint rotation + "
+                  "library angle", file=sys.stderr)
+        _lib.emit(NAME, board=str(pcb_path), check=True, pads_wrong=len(wrong),
+                  footprints=refs)
+        return 1 if wrong else 0
+
+    for _fp, pad, want, _have in wrong:
+        pad.SetOrientation(pcbnew.EDA_ANGLE(want, pcbnew.DEGREES_T))
+    fixed, fps = len(wrong), len(refs)
     if fixed:
         pcbnew.SaveBoard(str(pcb_path), b)
         print(f"  pad angles: fixed {fixed} pads on {fps} footprints", file=sys.stderr)

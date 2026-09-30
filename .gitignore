@@ -5,6 +5,8 @@
 /fab/
 examples/*/fab/
 examples/*/build/
+examples/*/review/
+/review/
 examples/*/*.kicad_prl
 examples/*/*-backups/
 

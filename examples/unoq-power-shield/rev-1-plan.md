@@ -240,6 +240,35 @@ are unfixable at this outline. Both are declared `accept_blockers` in
 (H1/J13) involves a stacking header, which mates from above and is
 deliberately not modelled by this check.
 
+### Findings from the new gates — 2026-09-30 (sign-off REOPENED)
+
+Three gates were added (a gated DRC ledger, a derived connector orientation,
+and a pad-angle check). Two of them fail this board as committed. Both
+defects were in the package the earlier gates passed.
+
+| Finding | Evidence | What the earlier gates said |
+| --- | --- | --- |
+| **J4 is rotated 180°.** Its signal leads face the bottom edge and the Qwiic socket opens *into* the board. | SM04B-SRSS-TB.pdf p.3: side-entry leads exit the rear of the 4.25 mm body, so the opening is on the reinforcement-tab side (+y in the footprint). J4 at 180° puts +y at board top. J3, the same footprint at 270°, is correct. `img/board-assembled.png` shows J3's housing open toward the left edge, and J4's pins at the edge. | The ledger read the 4× `copper_edge_clearance` on J4's pads as "at the board edge by design". It was the symptom of this rotation. `check_placement` passed because it trusted the declared face. |
+| **16 pads on R3–R7, C1, C6, C7 lie along the part axis.** Each is at 0° on a footprint rotated 90/270. On C1 (1206) the 1.8 mm pad length runs along the part instead of across it. | `fix_pad_angles.py --check` on both `pre_route.kicad_pcb` and the routed board. `fix_pad_angles` corrects all 16 on a scratch copy. | DRC reports no error for a pad at the wrong angle that still clears its neighbours. |
+
+Fix, in the pipeline and not in the board file:
+- **J4:** `[[floorplan.place]]` J4 rotation 180 → 0. Re-tune its y, because at
+  0° the body overhangs the outline by 0.07 mm.
+- **Pads:** `make build` now runs `fix_pad_angles` a second time, before
+  silk. The pass that strips the angles after the placement loop is
+  unproven. fanout's kicad-tools save is the suspect.
+
+Then rebuild, re-route, re-export and re-check. Drop the
+`copper_edge_clearance` J4 entry from `[[drc.accept]]`: with J4 turned
+around, its reinforcement tabs sit at the edge, not its signal pads. If DRC
+still flags the tabs, that needs its own explanation. Until then this board
+is not signed off.
+
+The residual-DRC ledger above now lives in `board.toml` as `[[drc.accept]]`,
+with the exact refs, and is enforced by `drc_sample.py`. The 13 DRC warnings
+(silk overlaps; `via_dangling` on VIN_PROT and VIN_RAW) are reported and not
+gated. The two dangling vias deserve a look on the rebuild.
+
 ## Open items (blocking netlist, not blocking sign-off)
 
 - TPS54331 compensation/feedback values from the ds design procedure,

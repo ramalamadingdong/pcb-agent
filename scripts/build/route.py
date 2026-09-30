@@ -30,8 +30,15 @@ THE THINGS THAT ARE NOT PREFERENCES
 * **Count copper segments across the router call.** If it lists nets
   correctly and emits zero copper, that is a silent no-op and its own report
   will not tell you. This pass fails loudly on it.
-* **DRC is not deterministic — sample it.** Five runs by default, comparing
-  which violation KINDS appear rather than the count.
+* **DRC is not deterministic — sample it, and gate on it.** Five runs by
+  default (drc_sample.py). Anything unexplained in ANY run fails the route:
+  an error not in the board.toml ledger, an unconnected item, a stale ledger
+  entry. The JSON line is still emitted first, so the evidence survives.
+* **Measure what the router left, yourself.** Right after the SES import,
+  before the completion passes paper over it, the unconnected nets are
+  counted by pcbnew (``unrouted_after_router``), not read from
+  Freerouting's log. It is the number the placement loop scores against
+  (score_route.py, /improve-placement).
 * `ImportSpecctraSES` + `SaveBoard` rewrites the board into the name-only net
   dialect: the top-level `(net <id> "<name>")` table goes to zero entries.
   KiCad, DRC and every fab export read this fine, but tools with their own
@@ -43,8 +50,8 @@ THE THINGS THAT ARE NOT PREFERENCES
 Environment: FREEROUTING_JAR (required), FREEROUTING_JAVA (default `java`),
 KICAD_CLI (default `kicad-cli`).
 
-board.toml keys consumed: none directly — `--config` is forwarded verbatim to
-every pass it runs.
+board.toml keys consumed: `[drc]` / `[[drc.accept]]` (via drc_sample.py);
+`--config` is also forwarded verbatim to every pass it runs.
 
 Not ported from the source shell script:
   * the multi-candidate JRE search (`~/.local/java/jdk-*`, a distribution's
@@ -66,11 +73,12 @@ import shutil
 import subprocess
 import sys
 import zipfile
-from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib import count_segments, emit, fail, pass_parser  # noqa: E402
+import drc_sample  # noqa: E402
+from _lib import (count_segments, emit, fail, load_config,  # noqa: E402
+                  pass_parser, unrouted_nets)
 
 HERE = Path(__file__).resolve().parent
 
@@ -149,53 +157,27 @@ def run_pass(script: str, *argv: str, allow: tuple[int, ...] = (0,)) -> tuple[di
     return data, proc.returncode
 
 
-def run_drc(kicad_cli: str, board: Path, out: Path) -> dict:
-    proc = subprocess.run(
-        [kicad_cli, "pcb", "drc", "--format", "json", "--severity-error",
-         "-o", str(out), str(board)],
-        capture_output=True, text=True)
-    if not out.exists():
-        fail(f"kicad-cli pcb drc wrote no report ({proc.returncode}): "
-             f"{(proc.stderr or proc.stdout)[:400]}")
-    report = json.loads(out.read_text(encoding="utf-8"))
-    kinds = Counter(v.get("type", "?") for v in report.get("violations", []))
-    return {
-        "kinds": dict(kinds),
-        "violations": sum(kinds.values()),
-        "unconnected": len(report.get("unconnected_items", [])),
-    }
-
-
-def fill_zones(board: Path) -> None:
-    """Final authoritative fill before DRC.
-
-    Every pass upstream fills as it saves; this is here because DRC refills
-    zones with its own filler when it finds them stale, and that invents
-    thermal-relief errors that are not on the board.
-    """
-    import pcbnew  # local: the freerouting/kicad-cli preflight reports first
-    b = pcbnew.LoadBoard(str(board))
-    if b is None:
-        fail(f"pcbnew could not load {board} (KiCad major mismatch?)")
-    pcbnew.ZONE_FILLER(b).Fill(b.Zones())
-    pcbnew.SaveBoard(str(board), b)
-
-
 def main() -> int:
     ap = pass_parser("route")
     ap.add_argument("--snapshot", default="pre_route.kicad_pcb",
                     help="post-build snapshot to route from (never modified)")
     ap.add_argument("--passes", type=int, default=100,
                     help="freerouting max passes (-mp)")
-    ap.add_argument("--drc-runs", type=int, default=5,
-                    help="DRC samples; DRC is not deterministic (min 1)")
+    ap.add_argument("--drc-runs", type=int, default=None,
+                    help="DRC samples; DRC is not deterministic (default "
+                         "[drc] runs, else 5; min 1)")
     ap.add_argument("--keep-intermediates", action="store_true",
                     help="keep the .dsn/.ses instead of deleting them")
+    ap.add_argument("--report", default=None,
+                    help="also write this pass's JSON line to a file, for "
+                         "render_review.py / score_route.py")
     args = ap.parse_args()
 
     board = Path(args.board)
     snapshot = Path(args.snapshot)
     workdir = board.parent if str(board.parent) else Path(".")
+    cfg = load_config(args.config)
+    drc_runs = args.drc_runs or int((cfg.get("drc") or {}).get("runs", 5))
 
     if not snapshot.exists():
         fail(f"{snapshot}: no snapshot to route from — run the build first")
@@ -224,10 +206,8 @@ def main() -> int:
     log(f"freerouting: {jar.name}  on Java {have}"
         + (f" (needs {need})" if need else ""))
 
-    kicad_cli = os.environ.get("KICAD_CLI", "kicad-cli")
-    if shutil.which(kicad_cli) is None:
-        fail(f"{kicad_cli}: not on PATH (set KICAD_CLI) — the DRC sampling at "
-             f"the end of this pass cannot run")
+    # Fails now, before the slow step, rather than after a 60 s route.
+    drc_sample.kicad_cli()
 
     dsn = workdir / f"board.{RUN_ID}.dsn"
     ses = workdir / f"board.{RUN_ID}.ses"
@@ -297,6 +277,13 @@ def main() -> int:
              f"table, or a DSN whose layers are all (type power), produces "
              f"exactly this.")
 
+    # What the router left undone, counted by pcbnew (zones filled in memory,
+    # nothing saved) before post_route_fix / finish_routes complete it.
+    unrouted = unrouted_nets(board)
+    log(f"unrouted after router: {unrouted['pad_links_missing']} pad link(s) "
+        f"in {len(unrouted['nets'])} net(s), ratsnest "
+        f"{unrouted['ratsnest_unconnected']}: {list(unrouted['nets'])[:8]}")
+
     # ---- 4-6. the completion stack ------------------------------------------
     log("=== 4/7  post_route_fix ======================================")
     stages["post_route_fix"], _ = run_pass(
@@ -319,41 +306,20 @@ def main() -> int:
     stages["cleanup_pass"], _ = run_pass(
         "cleanup_pass.py", "--board", str(board), "--config", args.config,
         "--netlist", args.netlist)
-    fill_zones(board)
+    # Final authoritative fill: DRC refills stale zones with its own filler,
+    # which invents thermal-relief errors that are not on the board.
+    drc_sample.fill_zones(board)
 
-    # ---- 7. DRC, sampled ----------------------------------------------------
+    # ---- 7. DRC, sampled and gated ------------------------------------------
     log("=== 7/7  DRC x%d =============================================="
-        % max(1, args.drc_runs))
-    runs = []
-    for i in range(max(1, args.drc_runs)):
-        out = workdir / f"drc_routed.{RUN_ID}.{i}.json"
-        r = run_drc(kicad_cli, board, out)
-        out.unlink(missing_ok=True)
-        runs.append(r)
-        log(f"    run {i + 1}: {r['violations']} violation(s) in "
-            f"{len(r['kinds'])} kind(s), {r['unconnected']} unconnected")
-    kind_sets = [set(r["kinds"]) for r in runs]
-    every = set.intersection(*kind_sets) if kind_sets else set()
-    any_ = set.union(*kind_sets) if kind_sets else set()
-    unstable = sorted(any_ - every)
-    if unstable:
-        # DRC is nondeterministic: a kind that shows up in some runs and not
-        # others is real, and counting one run would have missed it.
-        log(f"DRC kinds seen in some runs but not all: {unstable}")
-    drc = {
-        "runs": len(runs),
-        "kinds_every_run": sorted(every),
-        "kinds_unstable": unstable,
-        "counts_per_run": [r["violations"] for r in runs],
-        "unconnected_per_run": [r["unconnected"] for r in runs],
-    }
+        % max(1, drc_runs))
+    drc, drc_ok = drc_sample.sample(board, cfg, drc_runs, fill="none")
 
     if not args.keep_intermediates:
         dsn.unlink(missing_ok=True)
         ses.unlink(missing_ok=True)
 
-    emit(
-        "route",
+    report = dict(
         board=str(board),
         snapshot=str(snapshot),
         passes=args.passes,
@@ -362,10 +328,21 @@ def main() -> int:
         segments_before=seg_before,
         segments_after_router=seg_routed,
         segments_final=count_segments(board),
+        unrouted_after_router=unrouted,
         unfixed=stages.get("finish_routes", {}).get("unfixed", []),
         drc=drc,
         stages=stages,
     )
+    emit("route", **report)
+    if args.report:
+        Path(args.report).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.report).write_text(json.dumps({"pass": "route", **report}),
+                                     encoding="utf-8")
+    if not drc_ok:
+        log("route: DRC gate FAILED -- see the FAIL lines above. Fix the board "
+            "(or, for a real, explained exception, add a [[drc.accept]] entry "
+            "with its reason)")
+        return 1
     return 0
 
 

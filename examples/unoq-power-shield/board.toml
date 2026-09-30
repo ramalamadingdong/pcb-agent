@@ -695,9 +695,29 @@ bom_csv = "bom.csv"
 # conventions are per-reel, and the preview render is the ground truth.
 rot180 = ["Q1", "Q2", "Q3", "Q4"]
 
-# Connectors you plug into from a board edge. Only edge-mating parts belong
-# here: J5/J10-J13 are the vertical Arduino stacking headers, which mate from
-# ABOVE, and this check has no model for that.
+# Every connector a person plugs into. check_placement.py derives which way
+# each edge connector actually opens from its ROTATION (fitted from its pads
+# against the library footprint) and fails if that is not the declared face;
+# vertical ones get an access ring on their mating side. Any J/P/CN/USB ref
+# missing from this list fails too.
+#
+# Opening directions are per footprint, library-local, from the datasheet:
+[connector_footprints."KF301_5.0_2P"]
+opening = "-y"
+source = """KF301-5.0-2P.pdf p.1: side view (third-angle, right of the front
+view) is 7.60 deep with the pin 4.0 from the REAR face, so the wire-entry
+face is 3.6 from the pin row. The footprint body runs y -3.6..+4.0 about the
+pads: wire entry is -y."""
+
+[connector_footprints."JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"]
+opening = "+y"
+source = """SM04B-SRSS-TB.pdf p.3 side-entry header side view: 4.25 body, contact
+leads exit the REAR 0.7 beyond it; p.1 side-entry layout: signal row on one
+side, reinforcement tabs by the opening. Footprint: body y -1.675..+2.575
+(the 4.25), signal pads at y=-2 (the rear), MP tabs at +y: opening is +y.
+Cross-checked 2026-09-30 against img/board-assembled.png, where J3's
+housing opens toward its pins' far side."""
+
 [[connectors]]
 ref = "J1"                  # KF301 screw terminal, wires in from the front
 face = "bottom"
@@ -716,7 +736,7 @@ mating_depth_mm = 10.0
 edge_offset_mm = 1.5
 
 [[connectors]]
-ref = "J3"                  # JST SH, cable exits sideways
+ref = "J3"                  # JST SH (Qwiic), side entry
 face = "left"
 mating_depth_mm = 6.0
 
@@ -725,5 +745,130 @@ ref = "J4"
 face = "bottom"
 mating_depth_mm = 6.0
 # 0.5 mm2 graze of H2's screw head at the far corner of the Qwiic cable exit;
-# same fixed-hole story as J1/H3, and the ribbon exits the other way.
+# same fixed-hole story as J1/H3.
 accept_blockers = ["H2"]
+# KNOWN FAILURE (2026-09-30): J4 is placed at rotation 180, which puts its
+# signal leads at the edge and its opening facing INTO the board (top). J3,
+# the same footprint at 270, is correct. check_placement fails J4 on this
+# until [[floorplan.place]] J4 is re-rotated to 0 and the board rebuilt,
+# re-routed and re-signed-off. Not fixed here: that is a rebuild.
+
+# The Arduino UNO headers. Their pins go DOWN into the UNO Q's sockets, so
+# they mate from the bottom; nothing on the shield's underside may crowd them.
+[[connectors]]
+ref = "J5"
+mating = "vertical"
+mating_side = "bottom"
+
+[[connectors]]
+ref = "J10"
+mating = "vertical"
+mating_side = "bottom"
+
+[[connectors]]
+ref = "J11"
+mating = "vertical"
+mating_side = "bottom"
+# H3's M3 head/standoff (2.4 mm2 of the ring): hole and header are both
+# at Arduino's fixed UNO positions, as on every UNO shield. Keep the
+# standoff at or under 6 mm across.
+accept_blockers = ["H3"]
+
+[[connectors]]
+ref = "J12"
+mating = "vertical"
+mating_side = "bottom"
+
+[[connectors]]
+ref = "J13"
+mating = "vertical"
+mating_side = "bottom"
+# H1's M3 head/standoff (12.7 mm2 of the ring): hole and header are both
+# at Arduino's fixed UNO positions, as on every UNO shield. Keep the
+# standoff at or under 6 mm across.
+accept_blockers = ["H1"]
+
+# ------------------------------------------------------------ DRC ledger
+# The residual DRC ledger from rev-1-plan.md, as data the gate enforces
+# (scripts/build/drc_sample.py). Every entry names the exact refs; anything
+# not here fails the route and `make check`, and an entry that stops
+# matching fails too. 17 errors, identical across 5 runs on 2026-09-30.
+[drc]
+runs = 5
+gate_warnings = false
+
+[[drc.accept]]
+kind = "copper_edge_clearance"
+refs = ["J4"]
+count = 4
+reason = """J4's four signal pads sit inside the 0.5 mm edge rule. The ledger
+called this 'at the edge by design'. It is actually a symptom: J4 is rotated
+180 deg, so its signal leads (the rear of an SM04B side-entry header) face
+the edge and the socket opens into the board. check_placement now fails J4
+on orientation. Accepted here only so the DRC gate and the orientation
+finding are not the same failure twice; drop this entry when J4 is fixed."""
+
+[[drc.accept]]
+kind = "pth_inside_courtyard"
+refs = ["H1", "J13"]
+reason = "J13 pin 10 inside H1's courtyard: both are Arduino's fixed UNO positions; every UNO shield carries this adjacency."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["H1", "J13"]
+reason = "UNO form-factor fixture: mounting hole and header positions fixed by the UNO Q drill data."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["H2", "J4"]
+reason = "UNO form-factor fixture: H2 is at Arduino's fixed position (see [[connectors]] J4)."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["H3", "J1"]
+reason = "UNO form-factor fixture: H3 fixed; screw head reaches J1's wire path, use a countersunk M3 (see [[connectors]] J1)."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["C8", "L1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["C9", "L1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["C7", "L1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["C6", "L1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["D1", "L1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["C3", "D1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["C2", "D1"]
+reason = "Tight buck power stage: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["D2", "Q5"]
+reason = "Reverse-protection pair placed tight: conservative courtyards touch, bodies clear."
+
+[[drc.accept]]
+kind = "courtyards_overlap"
+refs = ["R1", "R16"]
+reason = "INA226 shunt-side resistors placed tight: conservative courtyards touch, bodies clear."

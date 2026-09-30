@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""export_fab — board -> fab package (gerbers + drill + pos [+ JLC BOM/CPL]).
+"""export_fab — board -> fab package (gerbers + drill + pos + IPC-D-356 [+ JLC BOM/CPL]).
 
 The export pins the coordinate contract the whole repo depends on: the
 board's aux (drill/place) origin is set to the Edge.Cuts BOTTOM-LEFT
@@ -98,6 +98,11 @@ def main() -> int:
     run(kcli + ["pcb", "export", "pos", str(board_path), "-o", str(pos_csv),
                 "--format", "csv", "--units", "mm", "--side", "front",
                 "--use-drill-file-origin"])
+    # IPC-D-356: the netlist a fab's electrical test probes against. It ships
+    # in the zip, and validate_gerbers' check_netlist holds it to netlist.csv,
+    # so level 0 runs on the package and not only on the schematic.
+    d356 = out_dir / f"{name}.d356"
+    run(kcli + ["pcb", "export", "ipcd356", str(board_path), "-o", str(d356)])
 
     # --- 3. optional JLC assembly BOM/CPL ---
     jlc = fab_cfg.get("jlc")
@@ -157,7 +162,7 @@ def main() -> int:
         zip_path.unlink(missing_ok=True)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
             for f in sorted(out_dir.iterdir()):
-                if f.suffix.lower() in (".gbr", ".drl", ".gbrjob"):
+                if f.suffix.lower() in (".gbr", ".drl", ".gbrjob", ".d356"):
                     z.write(f, f.name)
             n = len(z.namelist())
         log(f"zipped {n} files -> {zip_path.name}")

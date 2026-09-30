@@ -238,7 +238,7 @@ def main() -> int:
     if not stripped.endswith(")"):
         _lib.fail("unexpected board file tail -- refusing to edit")
     new = stripped[: stripped.rfind(")")] + "\n".join(blocks) + "\n)\n"
-    board.write_text(new, encoding="utf-8", newline="")
+    _lib.write_text_atomic(board, new)
     nets = _lib.assert_net_table(board)
 
     for ref, bx, by in site_list:
