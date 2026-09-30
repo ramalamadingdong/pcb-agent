@@ -240,7 +240,7 @@ are unfixable at this outline. Both are declared `accept_blockers` in
 (H1/J13) involves a stacking header, which mates from above and is
 deliberately not modelled by this check.
 
-### Findings from the new gates — 2026-09-30 (sign-off REOPENED)
+### Findings from the new gates — 2026-09-30 (fixed, see the rebuild below)
 
 Three gates were added (a gated DRC ledger, a derived connector orientation,
 and a pad-angle check). Two of them fail this board as committed. Both
@@ -288,6 +288,40 @@ The residual-DRC ledger above now lives in `board.toml` as `[[drc.accept]]`,
 with the exact refs, and is enforced by `drc_sample.py`. The 13 DRC warnings
 (silk overlaps; `via_dangling` on VIN_PROT and VIN_RAW) are reported and not
 gated. The two dangling vias deserve a look on the rebuild.
+
+### Rebuild — 2026-09-30
+
+`[[floorplan.place]]` J4 was changed to rotation 180 → 0 and y 3.2 → 3.4.
+At 0° the MP tabs face the edge, and 3.4 keeps them 0.625 mm clear of the
+0.5 mm rule. The J4 `copper_edge_clearance` ledger entry was deleted. The
+board was then rebuilt from `netlist.csv` in the pinned container (KiCad
+10.0.5, Freerouting 1.9.0) with `make build route export check`. Results:
+
+| Gate | Result |
+| --- | --- |
+| Schematic round-trip | 159/159 nodes |
+| ERC | 0 errors |
+| Pad angles | all at footprint rotation + library angle |
+| DRC ×5 | 13 errors, identical every run, all in `[[drc.accept]]`; 0 unconnected; no stale entries. J4's 4× `copper_edge_clearance` is gone |
+| `check_placement` | 11 passed, 0 failed. J4: opening +y → bottom, 0.12 mm to the edge |
+| `validate_gerbers` | 15 passed, 0 failed, 2 SKIP (mask/paste layers unmodelled; no RF budget) |
+| IPC-D-356 vs `netlist.csv` | 159/159 pins, none extra |
+| Route | 272 segments from the router, 29 plane links (GND/5V) left and closed by pour vias; `finish_routes` re-routed only 3V3_UNO, a segment it stripped for grazing a GND via by 0.158 mm |
+| Score | 60 vias, 881.5 mm of track |
+
+`drc_report.json`, `erc_report.json` and `img/*.png` were regenerated from
+the rebuilt board, the PNGs with native KiCad because the container has no
+3D models.
+
+The placement optimiser ran all four rounds and each ended with
+"infeasible placement", because the floorplan locks every part and the
+ledgered courtyard grazes count as overlap. So the board is exactly the hand
+floorplan. That is intended here, but it means `place.py` is not exercised
+on this example.
+
+Still to do at order time (the gate list above): re-verify every part in
+stock, and commit the exact package you upload. `fab/` is gitignored, so
+the zip has to be added deliberately.
 
 ## Open items (blocking netlist, not blocking sign-off)
 

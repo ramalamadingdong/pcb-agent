@@ -551,8 +551,14 @@ note = "Qwiic, mouth toward the left edge"
 [[floorplan.place]]
 ref = "J4"
 x = 41.5
-y = 3.2
-rotation = 180
+# Rotation 0, not 180 (fixed 2026-09-30): the SM04B's opening is +y in the
+# footprint (datasheet: signal leads exit the rear, the reinforcement tabs
+# sit beside the opening), and at 0 deg +y points at the bottom edge. At 180
+# the socket opened into the board. y = 3.4 keeps the MP tabs (outer edge
+# 2.775 mm from origin) 0.625 mm off the edge, clear of the 0.5 mm rule;
+# the courtyard still reaches the outline, so the plug does too.
+y = 3.4
+rotation = 0
 
 # ----------------------------------------------------------- build: route
 
@@ -747,11 +753,8 @@ mating_depth_mm = 6.0
 # 0.5 mm2 graze of H2's screw head at the far corner of the Qwiic cable exit;
 # same fixed-hole story as J1/H3.
 accept_blockers = ["H2"]
-# KNOWN FAILURE (2026-09-30): J4 is placed at rotation 180, which puts its
-# signal leads at the edge and its opening facing INTO the board (top). J3,
-# the same footprint at 270, is correct. check_placement fails J4 on this
-# until [[floorplan.place]] J4 is re-rotated to 0 and the board rebuilt,
-# re-routed and re-signed-off. Not fixed here: that is a rebuild.
+# Was rotated 180 (opening into the board) until 2026-09-30; see
+# [[floorplan.place]] J4 and rev-1-plan.md.
 
 # The Arduino UNO headers. Their pins go DOWN into the UNO Q's sockets, so
 # they mate from the bottom; nothing on the shield's underside may crowd them.
@@ -792,21 +795,10 @@ accept_blockers = ["H1"]
 # The residual DRC ledger from rev-1-plan.md, as data the gate enforces
 # (scripts/build/drc_sample.py). Every entry names the exact refs; anything
 # not here fails the route and `make check`, and an entry that stops
-# matching fails too. 17 errors, identical across 5 runs on 2026-09-30.
+# matching fails too.
 [drc]
 runs = 5
 gate_warnings = false
-
-[[drc.accept]]
-kind = "copper_edge_clearance"
-refs = ["J4"]
-count = 4
-reason = """J4's four signal pads sit inside the 0.5 mm edge rule. The ledger
-called this 'at the edge by design'. It is actually a symptom: J4 is rotated
-180 deg, so its signal leads (the rear of an SM04B side-entry header) face
-the edge and the socket opens into the board. check_placement now fails J4
-on orientation. Accepted here only so the DRC gate and the orientation
-finding are not the same failure twice; drop this entry when J4 is fixed."""
 
 [[drc.accept]]
 kind = "pth_inside_courtyard"

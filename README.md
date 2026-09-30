@@ -42,27 +42,31 @@ clean, every residual DRC item explained in its `rev-1-plan.md` ledger — but
 `examples/unoq-power-shield` as a pipeline exercise, not a verified
 reference design.
 
-**2026-09-30: two new gates fail the example as committed.** Both were real
-defects that the earlier gates passed:
+**2026-09-30: three defects found and fixed, example rebuilt.** New gates
+caught three real defects that the earlier gates had passed:
 
-- **J4 (Qwiic) is rotated 180°.** Its signal leads face the board edge and
-  its socket opens into the board. Found by `check_placement`, which now
-  derives which way a connector faces from its rotation.
-- **16 pads on eight rotated passives lie along the part axis** (R3–R7,
-  C1, C6, C7). Found by `fix_pad_angles --check`. A rebuild in the pinned
-  container comes out correct. `make build` now runs `fix_pad_angles` a
-  second time as insurance, and `make check` gates on it.
+- **J4 (Qwiic) was rotated 180°.** Its socket opened into the board.
+  `check_placement` now derives which way a connector faces from its
+  rotation. J4 is at 0° now.
+- **16 pads on eight rotated passives lay along the part axis.**
+  `fix_pad_angles --check` now gates on it.
 - **`finish_routes` laid redundant copper on already-routed nets.** Its
-  connectivity model never joined a segment's two ends. So it "completed"
-  26 nets that pcbnew counted as connected, reported 14 of them as NO PATH,
-  and left roughly 200 extra segments and 69 extra vias. It is fixed now. A
-  container rebuild of the example goes from 492 to 294 segments, 123 to 54
-  vias, and 1536 to 913 mm of track, with DRC unchanged (the same 17
-  accepted errors, 0 unconnected).
+  connectivity model never joined a segment's two ends. That is fixed, and
+  roughly 200 redundant segments and 69 vias are gone.
 
-J4 needs a floorplan change, and all three need a rebuild, a re-route and a
-new sign-off, recorded in the example's `rev-1-plan.md`. The board files
-here are the pre-fix build.
+The example was rebuilt from `netlist.csv` in the pinned container.
+`make check` passes every gate:
+
+- ERC: 0 errors.
+- Pad angles: all correct.
+- DRC ×5: 13 errors, all in the `[[drc.accept]]` ledger with reasons, 0
+  unconnected, identical in every run.
+- `check_placement`: 11/0.
+- `validate_gerbers`: 15/0, including the IPC-D-356 netlist against
+  `netlist.csv`, 159/159 pins.
+
+It is still **unfabricated**. See `rev-1-plan.md` for what remains at order
+time.
 
 If you want only the fab-output checker, it stands alone with no dependencies
 at [gerber-check](https://github.com/ramalamadingdong/gerber-check).
