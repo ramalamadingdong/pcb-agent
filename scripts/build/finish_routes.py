@@ -442,6 +442,9 @@ def main() -> int:
             grazed.append((t, tm(hit)))
     kill += [t for t, _d in grazed]
 
+    # Recorded before removal: these nets were connected until THIS pass cut
+    # them, so completing them is repair, not redundancy (route.py checks).
+    stripped_nets = sorted({t.GetNetname() for t in kill} - {""})
     for t in kill:
         b.Remove(t)
     if n_ring:
@@ -848,6 +851,8 @@ def main() -> int:
         nets_needing_completion=len(todo),
         links_routed=routed,
         stripped_ring_items=len(kill),
+        stripped_nets=stripped_nets,
+        nets_worked=sorted({name for name, _net, _cl in todo}),
         unfixed=sorted(set(unfixed)),
         segments_before=segs_before,
         segments_after=count_segments(pcb_path),

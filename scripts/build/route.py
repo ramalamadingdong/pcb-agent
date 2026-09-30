@@ -305,12 +305,16 @@ def main() -> int:
                        "--config", args.config, "--netlist", args.netlist,
                        allow=(0, 1))
     stages["finish_routes"] = fin
-    claimed = fin.get("nets_needing_completion")
-    if claimed and not unrouted_pre_completion["nets"]:
-        # its connectivity model is its own; pcbnew is the authority. This
-        # is the signature of the clusters_for bug fixed 2026-09-30.
-        log(f"WARNING finish_routes worked on {claimed} net(s) pcbnew counts as "
-            f"already connected: its links are redundant copper")
+    # Its connectivity model is its own; pcbnew is the authority. A net it
+    # worked that pcbnew called connected, and that it did not cut itself
+    # (graze/ring strips), got redundant copper: the signature of the
+    # clusters_for bug fixed 2026-09-30.
+    redundant = (set(fin.get("nets_worked") or [])
+                 - set(unrouted_pre_completion["nets"])
+                 - set(fin.get("stripped_nets") or []))
+    if redundant:
+        log(f"WARNING finish_routes worked {sorted(redundant)}, which pcbnew counted "
+            f"as connected and it did not strip: those links are redundant copper")
     if rc == 1:
         log(f"finish_routes: {len(fin.get('unfixed', []))} net(s) unfinished: "
             f"{fin.get('unfixed')}")

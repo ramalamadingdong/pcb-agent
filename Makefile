@@ -9,7 +9,10 @@
 
 IMAGE ?= pcb-agent
 BOARD_DIR ?= examples/unoq-power-shield
-NAME ?= $(notdir $(abspath $(BOARD_DIR)))
+# `=`, not `?=`: WSL exports NAME (the machine's name) into every shell, and
+# `?=` took it, so a build named its files after the computer. A NAME=... on
+# the make command line still overrides this.
+NAME = $(notdir $(abspath $(BOARD_DIR)))
 CONFIG ?= $(BOARD_DIR)/board.toml
 NETLIST ?= $(BOARD_DIR)/netlist.csv
 SCH ?= $(BOARD_DIR)/$(NAME).kicad_sch
